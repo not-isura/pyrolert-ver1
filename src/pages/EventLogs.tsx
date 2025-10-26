@@ -45,7 +45,7 @@ export default function EventLogs() {
       <div className="flex">
         <Sidebar />
         
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
           <div className="max-w-7xl mx-auto space-y-6">
             <h2 className="text-2xl font-bold text-foreground">All Event Logs</h2>
 
@@ -58,9 +58,9 @@ export default function EventLogs() {
               />
               
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Entries per page:</span>
+                <span className="text-sm text-muted-foreground hidden sm:inline">Entries per page:</span>
                 <Select value={entriesPerPage} onValueChange={setEntriesPerPage}>
-                  <SelectTrigger className="w-24">
+                  <SelectTrigger className="w-20 sm:w-24">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -71,13 +71,13 @@ export default function EventLogs() {
                   </SelectContent>
                 </Select>
                 
-                <Button variant="outline" onClick={() => setSearchTerm("")}>
+                <Button variant="outline" onClick={() => setSearchTerm("")} className="hidden sm:inline-flex">
                   Clear Filters
                 </Button>
               </div>
             </div>
 
-            <div className="border rounded-lg">
+            <div className="border rounded-lg overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>

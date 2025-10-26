@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { LogOut, Settings, ChevronDown, X } from "lucide-react";
+import Image from "next/image";
+import { LogOut, Settings, Menu, X, Home, Database, FileText } from "lucide-react";
 import { Button } from "./ui/button";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 interface HeaderProps {
   userName?: string;
@@ -12,6 +15,7 @@ interface HeaderProps {
 
 export const Header = ({ userName = "User", onLogout, onSettings }: HeaderProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
   
   const now = new Date();
   const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -21,6 +25,12 @@ export const Header = ({ userName = "User", onLogout, onSettings }: HeaderProps)
     month: 'long', 
     day: 'numeric' 
   });
+
+  const navItems = [
+    { title: "Dashboard", icon: Home, path: "/dashboard" },
+    { title: "Room Recent Data", icon: Database, path: "/room-data" },
+    { title: "All Event Logs", icon: FileText, path: "/event-logs" },
+  ];
 
   const handleSettingsClick = () => {
     setIsMobileMenuOpen(false);
@@ -34,32 +44,38 @@ export const Header = ({ userName = "User", onLogout, onSettings }: HeaderProps)
 
   return (
     <>
-      <header className="h-16 bg-primary text-primary-foreground px-4 sm:px-6 flex items-center justify-between border-b border-border shadow-sm">
+      <header className="sticky top-0 z-40 h-16 bg-primary text-primary-foreground px-4 sm:px-6 flex items-center justify-between border-b border-border shadow-sm">
         {/* Mobile Layout */}
         <div className="flex items-center justify-between w-full lg:hidden">
-          <h1 className="text-xl font-bold">Pyrolert</h1>
+          <Image
+            src="/pyrolert_light.svg"
+            alt="Pyrolert"
+            width={140}
+            height={45}
+            priority
+            className="h-10 w-auto"
+          />
           <Button 
             variant="ghost" 
             size="icon"
             className="text-primary-foreground hover:bg-accent hover:text-primary"
             onClick={() => setIsMobileMenuOpen(true)}
           >
-            <ChevronDown className="h-6 w-6" />
+            <Menu className="h-6 w-6" />
           </Button>
         </div>
 
         {/* Desktop Layout */}
         <div className="hidden lg:flex items-center justify-between w-full">
           <div className="flex items-center gap-8">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center font-bold text-primary">
-                P
-              </div>
-              <div>
-                <h1 className="text-xl font-bold">Pyrolert</h1>
-                <p className="text-xs opacity-80">Smart Safety. Smart Detection.</p>
-              </div>
-            </div>
+            <Image
+              src="/pyrolert_light.svg"
+              alt="Pyrolert"
+              width={200}
+              height={60}
+              priority
+              className="h-12 w-auto"
+            />
           </div>
 
           <div className="flex items-center gap-6">
@@ -90,13 +106,43 @@ export const Header = ({ userName = "User", onLogout, onSettings }: HeaderProps)
         </div>
       </header>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile Navigation Bar - Below Header */}
+      <nav className="sticky top-16 z-30 bg-white shadow-md lg:hidden">
+        <div className="flex items-center justify-around py-3">
+          {navItems.map((item) => {
+            const isActive = pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                href={item.path}
+                className={`flex items-center justify-center p-3 rounded-lg transition-colors ${
+                  isActive
+                    ? "text-[#002147]"
+                    : "text-gray-300 hover:text-gray-400"
+                }`}
+                title={item.title}
+              >
+                <item.icon className="h-6 w-6" />
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* Mobile Burger Menu Overlay - 3/4 Screen Width */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          {/* Navy Blue Overlay */}
-          <div className="absolute inset-0 bg-[#002147] flex flex-col">
-            {/* Close Button */}
-            <div className="flex justify-end p-4">
+          {/* Dark Overlay Background */}
+          <div 
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          
+          {/* Menu Panel - 3/4 Width from Right */}
+          <div className="absolute right-0 top-0 bottom-0 w-3/4 bg-[#002147] flex flex-col shadow-2xl">
+            {/* Header with Close Button */}
+            <div className="flex items-center justify-between p-4 border-b border-white/10">
+              <h1 className="text-xl font-bold text-white">Menu</h1>
               <Button 
                 variant="ghost" 
                 size="icon"
@@ -108,30 +154,26 @@ export const Header = ({ userName = "User", onLogout, onSettings }: HeaderProps)
             </div>
 
             {/* Menu Content */}
-            <div className="flex-1 flex flex-col items-center justify-center space-y-8 px-6">
-              {/* Logo and Branding */}
-              <div className="text-center space-y-4">
-                <div className="w-20 h-20 bg-[#F1C94E] rounded-full flex items-center justify-center font-bold text-[#002147] text-3xl mx-auto">
-                  P
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-white">Pyrolert</h1>
-                  <p className="text-sm text-[#F1C94E] mt-2">Smart Safety. Smart Detection.</p>
+            <div className="flex-1 flex flex-col p-6 space-y-6 overflow-y-auto">
+              {/* Logo Placeholder - Add your logo here in the future */}
+              <div className="text-center space-y-3 pb-6 border-b border-white/10">
+                <div className="w-24 h-24 bg-white/10 rounded-lg flex items-center justify-center mx-auto border-2 border-dashed border-white/30">
+                  <p className="text-xs text-white/50 text-center px-2">Logo Placeholder</p>
                 </div>
               </div>
 
               {/* User Info */}
-              <div className="text-center space-y-1">
+              <div className="text-center space-y-1 pb-6 border-b border-white/10">
                 <p className="text-lg font-semibold text-white">Hi, {userName}!</p>
                 <p className="text-sm text-white/80">{timeString}</p>
                 <p className="text-sm text-white/80">{dateString}</p>
               </div>
 
-              {/* Menu Options */}
-              <div className="w-full max-w-xs space-y-4">
+              {/* Settings and Logout Buttons */}
+              <div className="space-y-3 mt-auto">
                 <Button 
                   variant="outline" 
-                  className="w-full h-14 text-lg font-semibold bg-white/10 border-white/30 text-white hover:bg-white/20"
+                  className="w-full h-12 text-base font-semibold bg-white/10 border-white/30 text-white hover:bg-white/20 justify-start"
                   onClick={handleSettingsClick}
                 >
                   <Settings className="h-5 w-5 mr-3" />
@@ -139,7 +181,7 @@ export const Header = ({ userName = "User", onLogout, onSettings }: HeaderProps)
                 </Button>
                 <Button 
                   variant="outline" 
-                  className="w-full h-14 text-lg font-semibold bg-white/10 border-white/30 text-white hover:bg-white/20"
+                  className="w-full h-12 text-base font-semibold bg-[#FFFFF0] border-white/30 text-[#002147] hover:bg-white justify-start"
                   onClick={handleLogoutClick}
                 >
                   <LogOut className="h-5 w-5 mr-3" />

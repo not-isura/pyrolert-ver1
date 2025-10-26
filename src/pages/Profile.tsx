@@ -15,16 +15,19 @@ export default function Profile() {
   const router = useRouter();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
-    name: "Admin User",
+    firstName: "Admin",
+    middleName: "",
+    surname: "User",
     email: "admin@pyrolert.com",
-    role: "Administrator",
-    employeeId: "EMP001",
+    role: "Pyrolert System Admin",
+    adminId: "ADMIN001",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
 
   const handleSave = () => {
+    const fullName = `${formData.firstName} ${formData.middleName} ${formData.surname}`.trim();
     toast({
       title: "Profile Updated",
       description: "Your profile has been successfully updated.",
@@ -54,15 +57,36 @@ export default function Profile() {
                 <CardTitle className="text-2xl">My Profile</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
+                    <Label htmlFor="firstName">First Name</Label>
                     <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                      id="firstName"
+                      value={formData.firstName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
                     />
                   </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="middleName">Middle Name</Label>
+                    <Input
+                      id="middleName"
+                      value={formData.middleName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, middleName: e.target.value }))}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="surname">Surname</Label>
+                    <Input
+                      id="surname"
+                      value={formData.surname}
+                      onChange={(e) => setFormData(prev => ({ ...prev, surname: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
@@ -84,10 +108,10 @@ export default function Profile() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="employeeId">Employee ID</Label>
+                    <Label htmlFor="adminId">Admin ID</Label>
                     <Input
-                      id="employeeId"
-                      value={formData.employeeId}
+                      id="adminId"
+                      value={formData.adminId}
                       disabled
                     />
                   </div>
