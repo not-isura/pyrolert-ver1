@@ -1,5 +1,7 @@
+"use client";
+
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { StatusBadge, StatusType } from "@/components/StatusBadge";
@@ -26,7 +28,7 @@ const mockLogs: EventLog[] = [
 ];
 
 export default function EventLogs() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [entriesPerPage, setEntriesPerPage] = useState("10");
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
@@ -38,7 +40,7 @@ export default function EventLogs() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onLogout={() => navigate("/")} onSettings={() => navigate("/settings")} />
+      <Header onLogout={() => router.push("/")} onSettings={() => router.push("/settings")} />
       
       <div className="flex">
         <Sidebar />

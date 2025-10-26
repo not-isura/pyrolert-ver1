@@ -1,5 +1,7 @@
+"use client";
+
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
@@ -26,7 +28,7 @@ const mockUsers: User[] = [
 ];
 
 export default function UserDatabase() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [users] = useState(mockUsers);
   const [searchTerm, setSearchTerm] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState("10");
@@ -40,7 +42,7 @@ export default function UserDatabase() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onLogout={() => navigate("/")} onSettings={() => navigate("/settings")} />
+      <Header onLogout={() => router.push("/")} onSettings={() => router.push("/settings")} />
       
       <div className="flex">
         <Sidebar />
@@ -49,7 +51,7 @@ export default function UserDatabase() {
           <div className="max-w-7xl mx-auto space-y-6">
             <Button 
               variant="ghost" 
-              onClick={() => navigate("/settings")}
+              onClick={() => router.push("/settings")}
               className="mb-6"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -151,7 +153,7 @@ export default function UserDatabase() {
                 </Button>
               </div>
 
-              <Button onClick={() => navigate("/settings")}>
+              <Button onClick={() => router.push("/settings")}>
                 Back to Settings
               </Button>
             </div>

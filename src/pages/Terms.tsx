@@ -1,5 +1,7 @@
+"use client";
+
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
@@ -9,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
 
 export default function Terms() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { toast } = useToast();
   const [content, setContent] = useState(
     `TERMS AND CONDITIONS
@@ -47,7 +49,7 @@ For questions regarding these terms, please contact your system administrator.`
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onLogout={() => navigate("/")} onSettings={() => navigate("/settings")} />
+      <Header onLogout={() => router.push("/")} onSettings={() => router.push("/settings")} />
       
       <div className="flex">
         <Sidebar />
@@ -56,7 +58,7 @@ For questions regarding these terms, please contact your system administrator.`
           <div className="max-w-4xl mx-auto">
             <Button 
               variant="ghost" 
-              onClick={() => navigate("/settings")}
+              onClick={() => router.push("/settings")}
               className="mb-6"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -77,7 +79,7 @@ For questions regarding these terms, please contact your system administrator.`
                 <div className="flex justify-end gap-3">
                   <Button 
                     variant="outline" 
-                    onClick={() => navigate("/settings")}
+                    onClick={() => router.push("/settings")}
                   >
                     Back to Settings
                   </Button>

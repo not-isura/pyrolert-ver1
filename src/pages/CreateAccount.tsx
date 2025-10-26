@@ -1,5 +1,7 @@
+"use client";
+
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
@@ -12,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
 
 export default function CreateAccount() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
@@ -45,7 +47,7 @@ export default function CreateAccount() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onLogout={() => navigate("/")} onSettings={() => navigate("/settings")} />
+      <Header onLogout={() => router.push("/")} onSettings={() => router.push("/settings")} />
       
       <div className="flex">
         <Sidebar />
@@ -54,7 +56,7 @@ export default function CreateAccount() {
           <div className="max-w-3xl mx-auto">
             <Button 
               variant="ghost" 
-              onClick={() => navigate("/settings")}
+              onClick={() => router.push("/settings")}
               className="mb-6"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -137,7 +139,7 @@ export default function CreateAccount() {
                 <div className="flex justify-end gap-3 pt-6">
                   <Button 
                     variant="outline" 
-                    onClick={() => navigate("/settings")}
+                    onClick={() => router.push("/settings")}
                   >
                     Back to Settings
                   </Button>

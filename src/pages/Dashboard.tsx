@@ -1,5 +1,7 @@
+"use client";
+
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { RoomCard } from "@/components/RoomCard";
@@ -35,23 +37,23 @@ const mockRooms = [
 ];
 
 export default function Dashboard() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [rooms] = useState(mockRooms);
 
   const handleLogout = () => {
-    navigate("/");
+    router.push("/");
   };
 
   const handleSettings = () => {
-    navigate("/settings");
+    router.push("/settings");
   };
 
   const handleAddRoom = () => {
-    navigate("/register-room");
+    router.push("/register-room");
   };
 
   const handleRoomClick = (roomId: string) => {
-    navigate(`/room-data?id=${roomId}`);
+    router.push(`/room-data?id=${roomId}`);
   };
 
   return (
@@ -61,11 +63,11 @@ export default function Dashboard() {
       <div className="flex">
         <Sidebar />
         
-        <main className="flex-1 p-8">
-          <div className="max-w-7xl mx-auto">
-            <h2 className="text-2xl font-bold text-foreground mb-6">Room Overview</h2>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+          <div className="max-w-[1920px] mx-auto">
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4 sm:mb-6">Room Overview</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6">
               {rooms.map((room) => (
                 <RoomCard
                   key={room.id}
@@ -78,15 +80,17 @@ export default function Dashboard() {
                 />
               ))}
               
-              <Card 
-                className="hover:shadow-lg transition-shadow cursor-pointer border-2 border-dashed border-muted-foreground/30 flex items-center justify-center min-h-[200px]"
+              {/* Add New Room Button */}
+              <div 
                 onClick={handleAddRoom}
+                className="relative w-full bg-white rounded-xl shadow-sm border-2 border-dashed border-[#CBD5E1] hover:shadow-md hover:border-[#002147] transition-all duration-200 cursor-pointer overflow-hidden flex items-center justify-center min-h-[280px]"
+                style={{ fontFamily: 'Inter, Poppins, sans-serif' }}
               >
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <Plus className="h-12 w-12 text-muted-foreground mb-2" />
-                  <p className="text-lg font-medium text-muted-foreground">Add New Room</p>
-                </CardContent>
-              </Card>
+                <div className="flex flex-col items-center justify-center gap-3">
+                  <Plus className="h-12 w-12 text-[#002147]" />
+                  <p className="text-[16px] font-semibold text-[#002147]">Add New Room</p>
+                </div>
+              </div>
             </div>
           </div>
         </main>

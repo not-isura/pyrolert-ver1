@@ -1,4 +1,6 @@
-import { useNavigate } from "react-router-dom";
+"use client";
+
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,11 +34,11 @@ const settingsOptions = [
 ];
 
 export default function Settings() {
-  const navigate = useNavigate();
+  const router = useRouter();
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onLogout={() => navigate("/")} onSettings={() => navigate("/settings")} />
+      <Header onLogout={() => router.push("/")} onSettings={() => router.push("/settings")} />
       
       <div className="flex">
         <Sidebar />
@@ -50,7 +52,7 @@ export default function Settings() {
                 <Card 
                   key={option.path}
                   className="hover:shadow-lg transition-shadow cursor-pointer"
-                  onClick={() => navigate(option.path)}
+                  onClick={() => router.push(option.path)}
                 >
                   <CardHeader>
                     <div className="flex items-center gap-4">

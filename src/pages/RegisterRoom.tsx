@@ -1,5 +1,7 @@
+"use client";
+
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
@@ -10,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScanLine, ArrowLeft } from "lucide-react";
 
 export default function RegisterRoom() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     roomName: "",
@@ -44,14 +46,14 @@ export default function RegisterRoom() {
       title: "Room Registered",
       description: `${formData.roomName} has been successfully registered.`,
     });
-    navigate("/dashboard");
+    router.push("/dashboard");
   };
 
   const allFieldsFilled = Object.values(formData).every(value => value.trim() !== "");
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onLogout={() => navigate("/")} onSettings={() => navigate("/settings")} />
+      <Header onLogout={() => router.push("/")} onSettings={() => router.push("/settings")} />
       
       <div className="flex">
         <Sidebar />
@@ -60,7 +62,7 @@ export default function RegisterRoom() {
           <div className="max-w-3xl mx-auto">
             <Button 
               variant="ghost" 
-              onClick={() => navigate("/dashboard")}
+              onClick={() => router.push("/dashboard")}
               className="mb-6"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -162,7 +164,7 @@ export default function RegisterRoom() {
                 <div className="flex justify-end gap-3 pt-6">
                   <Button 
                     variant="outline" 
-                    onClick={() => navigate("/dashboard")}
+                    onClick={() => router.push("/dashboard")}
                   >
                     Cancel
                   </Button>
