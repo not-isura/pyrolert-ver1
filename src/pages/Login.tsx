@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -16,16 +16,35 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
-  const [forgotPasswordStep, setForgotPasswordStep] = useState(1); // 1: email, 2: password reset
+  const [forgotPasswordStep, setForgotPasswordStep] = useState(1); // 1: email, 2: OTP, 3: new password
   const [resetEmail, setResetEmail] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
+  const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [otpTimer, setOtpTimer] = useState(60);
+  const [canResendOtp, setCanResendOtp] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // OTP Timer
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (forgotPasswordStep === 2 && otpTimer > 0) {
+      interval = setInterval(() => {
+        setOtpTimer((prev) => {
+          if (prev <= 1) {
+            setCanResendOtp(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [forgotPasswordStep, otpTimer]);
 
   // Password validation
   const validatePassword = (pwd: string) => {
@@ -59,13 +78,15 @@ export default function Login() {
     setIsForgotPasswordOpen(true);
     setForgotPasswordStep(1);
     setResetEmail("");
-    setCurrentPassword("");
+    setOtpDigits(["", "", "", "", "", ""]);
     setNewPassword("");
     setConfirmPassword("");
+    setOtpTimer(60);
+    setCanResendOtp(false);
   };
 
   const handleEmailNext = () => {
-    // TODO: Validate email exists in database
+    // TODO: Validate email exists in database and send OTP
     if (resetEmail.trim() === "") {
       toast({
         title: "Error",
@@ -74,7 +95,77 @@ export default function Login() {
       });
       return;
     }
+    
+    // TODO: Send OTP to email
+    toast({
+      title: "OTP Sent",
+      description: "A 6-digit OTP has been sent to your email.",
+    });
     setForgotPasswordStep(2);
+    setOtpTimer(60);
+    setCanResendOtp(false);
+    
+    // Focus first OTP input field after step changes
+    setTimeout(() => {
+      otpInputRefs.current[0]?.focus();
+    }, 100);
+  };
+
+  const handleOtpChange = (index: number, value: string) => {
+    // Only allow numeric input
+    const numericValue = value.replace(/\D/g, '');
+    
+    if (numericValue.length > 1) return; // Prevent multiple digits
+    
+    const newOtpDigits = [...otpDigits];
+    newOtpDigits[index] = numericValue;
+    setOtpDigits(newOtpDigits);
+    
+    // Auto-focus next field if a digit was entered
+    if (numericValue && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      // Move to previous field on backspace if current field is empty
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleResendOtp = () => {
+    // TODO: Resend OTP to email
+    toast({
+      title: "OTP Resent",
+      description: "A new 6-digit OTP has been sent to your email.",
+    });
+    setOtpTimer(60);
+    setCanResendOtp(false);
+    setOtpDigits(["", "", "", "", "", ""]);
+    otpInputRefs.current[0]?.focus();
+  };
+
+  const handleVerifyOtp = () => {
+    const otp = otpDigits.join("");
+    
+    // TODO: Verify OTP with backend
+    if (otp.length !== 6) {
+      toast({
+        title: "Invalid OTP",
+        description: "Please enter a 6-digit OTP.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // TODO: Verify OTP against backend
+    // For now, simulate successful verification
+    toast({
+      title: "OTP Verified",
+      description: "Please create your new password.",
+    });
+    setForgotPasswordStep(3);
   };
 
   const handlePasswordReset = () => {
@@ -109,9 +200,11 @@ export default function Login() {
     setIsForgotPasswordOpen(false);
     setForgotPasswordStep(1);
     setResetEmail("");
-    setCurrentPassword("");
+    setOtpDigits(["", "", "", "", "", ""]);
     setNewPassword("");
     setConfirmPassword("");
+    setOtpTimer(60);
+    setCanResendOtp(false);
   };
 
   return (
@@ -203,7 +296,9 @@ export default function Login() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-[#002147]">
-              {forgotPasswordStep === 1 ? "Forgot Password" : "Reset Password"}
+              {forgotPasswordStep === 1 && "Forgot Password"}
+              {forgotPasswordStep === 2 && "Verify OTP"}
+              {forgotPasswordStep === 3 && "Create New Password"}
             </DialogTitle>
           </DialogHeader>
 
@@ -244,38 +339,77 @@ export default function Login() {
             </div>
           )}
 
-          {/* Step 2: Password Reset */}
+          {/* Step 2: OTP Verification */}
           {forgotPasswordStep === 2 && (
             <div className="space-y-6 py-4">
               <p className="text-sm text-gray-600">
-                Enter your current password and choose a new password.
+                Enter the 6-digit OTP sent to <span className="font-semibold">{resetEmail}</span>
               </p>
 
-              {/* Current Password */}
+              {/* OTP Input - 6 Separate Fields */}
               <div className="space-y-2">
-                <Label htmlFor="current-password">Current Password</Label>
-                <div className="relative">
-                  <Input
-                    id="current-password"
-                    type={showCurrentPassword ? "text" : "password"}
-                    placeholder="Enter current password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="pr-10 h-12"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showCurrentPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
+                <Label className="text-center block">6-Digit OTP</Label>
+                <div className="flex gap-2 justify-center">
+                  {otpDigits.map((digit, index) => (
+                    <Input
+                      key={index}
+                      ref={(el) => {
+                        otpInputRefs.current[index] = el;
+                      }}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(index, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                      className="w-12 h-12 text-center text-2xl font-semibold p-0"
+                    />
+                  ))}
                 </div>
               </div>
+
+              {/* Timer and Resend */}
+              <div className="text-center space-y-2">
+                {!canResendOtp ? (
+                  <p className="text-sm text-gray-500">
+                    Resend OTP in <span className="font-semibold text-[#002147]">{otpTimer}s</span>
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    className="text-sm text-[#002147] hover:underline font-semibold"
+                  >
+                    Resend OTP
+                  </button>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={handleCancel}
+                  className="flex-1 h-11"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleVerifyOtp}
+                  disabled={otpDigits.join("").length !== 6}
+                  className="flex-1 h-11 bg-[#002147] hover:bg-[#003366] disabled:opacity-50"
+                >
+                  Verify OTP
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: New Password Creation */}
+          {forgotPasswordStep === 3 && (
+            <div className="space-y-6 py-4">
+              <p className="text-sm text-gray-600">
+                Create your new password.
+              </p>
 
               {/* New Password */}
               <div className="space-y-2">
@@ -388,7 +522,7 @@ export default function Login() {
                 </Button>
                 <Button
                   onClick={handlePasswordReset}
-                  disabled={!isPasswordValid || !passwordsMatch || !currentPassword}
+                  disabled={!isPasswordValid || !passwordsMatch}
                   className="flex-1 h-11 bg-[#002147] hover:bg-[#003366] disabled:opacity-50"
                 >
                   Reset Password

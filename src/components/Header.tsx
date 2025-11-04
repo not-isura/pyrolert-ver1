@@ -108,21 +108,21 @@ export const Header = ({ userName = "User", onLogout, onSettings }: HeaderProps)
 
       {/* Mobile Navigation Bar - Below Header */}
       <nav className="sticky top-16 z-30 bg-white shadow-md lg:hidden">
-        <div className="flex items-center justify-around py-3">
+        <div className="flex items-center justify-around py-2">
           {navItems.map((item) => {
             const isActive = pathname === item.path;
             return (
               <Link
                 key={item.path}
                 href={item.path}
-                className={`flex items-center justify-center p-3 rounded-lg transition-colors ${
+                className={`flex items-center justify-center p-2 rounded-lg transition-colors ${
                   isActive
                     ? "text-[#002147]"
                     : "text-gray-300 hover:text-gray-400"
                 }`}
                 title={item.title}
               >
-                <item.icon className="h-6 w-6" />
+                <item.icon className="h-5 w-5" />
               </Link>
             );
           })}
