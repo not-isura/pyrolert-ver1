@@ -54,11 +54,12 @@ npm run dev
 
 This project is built with:
 
-- Vite
+- Next.js 15
 - TypeScript
-- React
+- React 18
 - shadcn-ui
 - Tailwind CSS
+- Supabase
 
 ## How can I deploy this project?
 

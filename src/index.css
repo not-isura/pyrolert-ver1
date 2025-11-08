@@ -64,5 +64,20 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    /* Prevent pinch-to-zoom and touch manipulation */
+    touch-action: pan-x pan-y;
+    -ms-touch-action: pan-x pan-y;
+  }
+
+  html {
+    /* Additional zoom prevention for iOS Safari */
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+  }
+
+  /* Prevent double-tap zoom on iOS */
+  * {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
   }
 }

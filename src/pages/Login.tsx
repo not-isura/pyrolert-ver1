@@ -25,9 +25,40 @@ export default function Login() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [otpTimer, setOtpTimer] = useState(60);
   const [canResendOtp, setCanResendOtp] = useState(false);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [viewportOffset, setViewportOffset] = useState(0);
   const router = useRouter();
   const { toast } = useToast();
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Keyboard detection for mobile with iOS viewport offset tracking
+  useEffect(() => {
+    const handleResize = () => {
+      // Detect if keyboard is open by checking if viewport height decreased significantly
+      if (typeof window !== 'undefined') {
+        const vh = window.visualViewport?.height || window.innerHeight;
+        const windowHeight = window.innerHeight;
+        const isOpen = vh < windowHeight * 0.75;
+        setIsKeyboardOpen(isOpen);
+        
+        // Track viewport offset for iOS (visual viewport offset from top)
+        if (window.visualViewport && isOpen) {
+          setViewportOffset(window.visualViewport.offsetTop || 0);
+        } else {
+          setViewportOffset(0);
+        }
+      }
+    };
+
+    if (typeof window !== 'undefined' && window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+      window.visualViewport.addEventListener('scroll', handleResize);
+      return () => {
+        window.visualViewport.removeEventListener('resize', handleResize);
+        window.visualViewport.removeEventListener('scroll', handleResize);
+      };
+    }
+  }, []);
 
   // OTP Timer
   useEffect(() => {
@@ -293,9 +324,22 @@ export default function Login() {
 
       {/* Forgot Password Dialog */}
       <Dialog open={isForgotPasswordOpen} onOpenChange={setIsForgotPasswordOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent 
+          className={`max-w-[90vw] sm:max-w-md overflow-y-auto ${isKeyboardOpen ? 'max-h-[60vh] !translate-y-0' : 'max-h-[85vh]'}`}
+          style={{
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehavior: 'contain',
+            touchAction: 'pan-y',
+            ...(isKeyboardOpen && {
+              position: 'fixed',
+              top: '10px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+            }),
+          }}
+        >
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-[#002147]">
+            <DialogTitle className="text-xl sm:text-2xl font-bold text-[#002147]">
               {forgotPasswordStep === 1 && "Forgot Password"}
               {forgotPasswordStep === 2 && "Verify OTP"}
               {forgotPasswordStep === 3 && "Create New Password"}
@@ -304,8 +348,8 @@ export default function Login() {
 
           {/* Step 1: Email Entry */}
           {forgotPasswordStep === 1 && (
-            <div className="space-y-6 py-4">
-              <p className="text-sm text-gray-600">
+            <div className="space-y-4 sm:space-y-6 py-2 sm:py-4">
+              <p className="text-xs sm:text-sm text-gray-600">
                 Enter your email address to reset your password.
               </p>
               
@@ -321,17 +365,17 @@ export default function Login() {
                 />
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-2 sm:gap-3 pt-2 sm:pt-4">
                 <Button
                   variant="outline"
                   onClick={handleCancel}
-                  className="flex-1 h-11"
+                  className="flex-1 h-9 sm:h-11 text-sm"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleEmailNext}
-                  className="flex-1 h-11 bg-[#002147] hover:bg-[#003366]"
+                  className="flex-1 h-9 sm:h-11 text-sm bg-[#002147] hover:bg-[#003366]"
                 >
                   Next
                 </Button>
@@ -341,15 +385,15 @@ export default function Login() {
 
           {/* Step 2: OTP Verification */}
           {forgotPasswordStep === 2 && (
-            <div className="space-y-6 py-4">
-              <p className="text-sm text-gray-600">
+            <div className="space-y-4 sm:space-y-6 py-2 sm:py-4">
+              <p className="text-xs sm:text-sm text-gray-600">
                 Enter the 6-digit OTP sent to <span className="font-semibold">{resetEmail}</span>
               </p>
 
               {/* OTP Input - 6 Separate Fields */}
               <div className="space-y-2">
-                <Label className="text-center block">6-Digit OTP</Label>
-                <div className="flex gap-2 justify-center">
+                <Label className="text-center block text-sm">6-Digit OTP</Label>
+                <div className="flex gap-1 sm:gap-2 justify-center">
                   {otpDigits.map((digit, index) => (
                     <Input
                       key={index}
@@ -362,7 +406,7 @@ export default function Login() {
                       value={digit}
                       onChange={(e) => handleOtpChange(index, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                      className="w-12 h-12 text-center text-2xl font-semibold p-0"
+                      className="w-10 h-10 sm:w-12 sm:h-12 text-center text-xl sm:text-2xl font-semibold p-0"
                     />
                   ))}
                 </div>
@@ -385,18 +429,18 @@ export default function Login() {
                 )}
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-2 sm:gap-3 pt-2 sm:pt-4">
                 <Button
                   variant="outline"
                   onClick={handleCancel}
-                  className="flex-1 h-11"
+                  className="flex-1 h-9 sm:h-11 text-sm"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleVerifyOtp}
                   disabled={otpDigits.join("").length !== 6}
-                  className="flex-1 h-11 bg-[#002147] hover:bg-[#003366] disabled:opacity-50"
+                  className="flex-1 h-9 sm:h-11 text-sm bg-[#002147] hover:bg-[#003366] disabled:opacity-50"
                 >
                   Verify OTP
                 </Button>
@@ -406,8 +450,8 @@ export default function Login() {
 
           {/* Step 3: New Password Creation */}
           {forgotPasswordStep === 3 && (
-            <div className="space-y-6 py-4">
-              <p className="text-sm text-gray-600">
+            <div className="space-y-4 sm:space-y-6 py-2 sm:py-4">
+              <p className="text-xs sm:text-sm text-gray-600">
                 Create your new password.
               </p>
 
@@ -464,47 +508,47 @@ export default function Login() {
               </div>
 
               {/* Password Validation Cues */}
-              <div className="space-y-2 p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm font-semibold text-gray-700 mb-2">Password Requirements:</p>
+              <div className="space-y-2 p-3 sm:p-4 bg-gray-50 rounded-lg">
+                <p className="text-xs sm:text-sm font-semibold text-gray-700 mb-1 sm:mb-2">Password Requirements:</p>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     {passwordValidation.length ? (
-                      <Check className="h-4 w-4 text-green-600" />
+                      <Check className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
                     ) : (
-                      <X className="h-4 w-4 text-red-500" />
+                      <X className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
                     )}
-                    <span className={`text-sm ${passwordValidation.length ? "text-green-600" : "text-gray-600"}`}>
+                    <span className={`text-xs sm:text-sm ${passwordValidation.length ? "text-green-600" : "text-gray-600"}`}>
                       8-16 characters
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     {passwordValidation.hasCapital ? (
-                      <Check className="h-4 w-4 text-green-600" />
+                      <Check className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
                     ) : (
-                      <X className="h-4 w-4 text-red-500" />
+                      <X className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
                     )}
-                    <span className={`text-sm ${passwordValidation.hasCapital ? "text-green-600" : "text-gray-600"}`}>
+                    <span className={`text-xs sm:text-sm ${passwordValidation.hasCapital ? "text-green-600" : "text-gray-600"}`}>
                       At least one capital letter
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     {passwordValidation.hasSpecial ? (
-                      <Check className="h-4 w-4 text-green-600" />
+                      <Check className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
                     ) : (
-                      <X className="h-4 w-4 text-red-500" />
+                      <X className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
                     )}
-                    <span className={`text-sm ${passwordValidation.hasSpecial ? "text-green-600" : "text-gray-600"}`}>
+                    <span className={`text-xs sm:text-sm ${passwordValidation.hasSpecial ? "text-green-600" : "text-gray-600"}`}>
                       At least one special character
                     </span>
                   </div>
                   {confirmPassword && (
                     <div className="flex items-center gap-2">
                       {passwordsMatch ? (
-                        <Check className="h-4 w-4 text-green-600" />
+                        <Check className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
                       ) : (
-                        <X className="h-4 w-4 text-red-500" />
+                        <X className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
                       )}
-                      <span className={`text-sm ${passwordsMatch ? "text-green-600" : "text-red-500"}`}>
+                      <span className={`text-xs sm:text-sm ${passwordsMatch ? "text-green-600" : "text-red-500"}`}>
                         Passwords match
                       </span>
                     </div>
@@ -512,18 +556,18 @@ export default function Login() {
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-2 sm:gap-3 pt-2 sm:pt-4">
                 <Button
                   variant="outline"
                   onClick={handleCancel}
-                  className="flex-1 h-11"
+                  className="flex-1 h-9 sm:h-11 text-sm"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handlePasswordReset}
                   disabled={!isPasswordValid || !passwordsMatch}
-                  className="flex-1 h-11 bg-[#002147] hover:bg-[#003366] disabled:opacity-50"
+                  className="flex-1 h-9 sm:h-11 text-sm bg-[#002147] hover:bg-[#003366] disabled:opacity-50"
                 >
                   Reset Password
                 </Button>
