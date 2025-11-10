@@ -1,6 +1,4 @@
 {
   "/page": "app/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/settings/page": "app/settings/page.js",
-  "/settings/users/page": "app/settings/users/page.js"
+  "/event-logs/page": "app/event-logs/page.js"
 }

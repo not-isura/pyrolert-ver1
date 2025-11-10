@@ -596,6 +596,9 @@ video {
 .invisible {
   visibility: hidden;
 }
+.collapse {
+  visibility: collapse;
+}
 .fixed {
   position: fixed;
 }
@@ -906,6 +909,9 @@ video {
 .h-\[6px\] {
   height: 6px;
 }
+.h-\[90vh\] {
+  height: 90vh;
+}
 .h-\[calc\(100vh-4rem\)\] {
   height: calc(100vh - 4rem);
 }
@@ -978,6 +984,9 @@ video {
 .w-12 {
   width: 3rem;
 }
+.w-16 {
+  width: 4rem;
+}
 .w-2 {
   width: 0.5rem;
 }
@@ -1035,6 +1044,12 @@ video {
 .w-\[1px\] {
   width: 1px;
 }
+.w-\[70px\] {
+  width: 70px;
+}
+.w-\[90px\] {
+  width: 90px;
+}
 .w-auto {
   width: auto;
 }
@@ -1057,11 +1072,21 @@ video {
 .min-w-\[12rem\] {
   min-width: 12rem;
 }
+.min-w-\[60px\] {
+  min-width: 60px;
+}
 .min-w-\[8rem\] {
   min-width: 8rem;
 }
 .min-w-\[var\(--radix-select-trigger-width\)\] {
   min-width: var(--radix-select-trigger-width);
+}
+.min-w-fit {
+  min-width: -moz-fit-content;
+  min-width: fit-content;
+}
+.max-w-2xl {
+  max-width: 42rem;
 }
 .max-w-3xl {
   max-width: 48rem;
@@ -1086,6 +1111,9 @@ video {
 }
 .max-w-\[90vw\] {
   max-width: 90vw;
+}
+.max-w-\[95vw\] {
+  max-width: 95vw;
 }
 .max-w-lg {
   max-width: 32rem;
@@ -1241,6 +1269,9 @@ video {
 .justify-around {
   justify-content: space-around;
 }
+.gap-0 {
+  gap: 0px;
+}
 .gap-1 {
   gap: 0.25rem;
 }
@@ -1332,6 +1363,9 @@ video {
 }
 .break-words {
   overflow-wrap: break-word;
+}
+.rounded {
+  border-radius: 0.25rem;
 }
 .rounded-\[25px\] {
   border-radius: 25px;
@@ -1524,6 +1558,12 @@ video {
 .bg-muted {
   background-color: hsl(var(--muted));
 }
+.bg-muted\/20 {
+  background-color: hsl(var(--muted) / 0.2);
+}
+.bg-muted\/30 {
+  background-color: hsl(var(--muted) / 0.3);
+}
 .bg-muted\/50 {
   background-color: hsl(var(--muted) / 0.5);
 }
@@ -1673,6 +1713,9 @@ video {
 .pl-8 {
   padding-left: 2rem;
 }
+.pl-9 {
+  padding-left: 2.25rem;
+}
 .pr-10 {
   padding-right: 2.5rem;
 }
@@ -1779,6 +1822,9 @@ video {
 }
 .font-semibold {
   font-weight: 600;
+}
+.capitalize {
+  text-transform: capitalize;
 }
 .tabular-nums {
   --tw-numeric-spacing: tabular-nums;
@@ -3244,16 +3290,16 @@ All colors MUST be HSL.
     margin-top: 0px;
   }
 
+  .sm\:block {
+    display: block;
+  }
+
   .sm\:inline {
     display: inline;
   }
 
   .sm\:flex {
     display: flex;
-  }
-
-  .sm\:inline-flex {
-    display: inline-flex;
   }
 
   .sm\:h-10 {
@@ -3292,6 +3338,14 @@ All colors MUST be HSL.
     width: 1rem;
   }
 
+  .sm\:w-40 {
+    width: 10rem;
+  }
+
+  .sm\:w-48 {
+    width: 12rem;
+  }
+
   .sm\:w-6 {
     width: 1.5rem;
   }
@@ -3308,12 +3362,20 @@ All colors MUST be HSL.
     max-width: 42rem;
   }
 
+  .sm\:max-w-5xl {
+    max-width: 64rem;
+  }
+
   .sm\:max-w-md {
     max-width: 28rem;
   }
 
   .sm\:max-w-sm {
     max-width: 24rem;
+  }
+
+  .sm\:flex-none {
+    flex: none;
   }
 
   .sm\:grid-cols-2 {

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Edit, Trash2, ChevronLeft, ChevronRight, ArrowLeft, Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { Edit, Trash2, ChevronLeft, ChevronRight, ArrowLeft, Eye, EyeOff, AlertTriangle, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface User {
@@ -163,10 +163,12 @@ export default function UserDatabase() {
   const filteredUsers = users.filter(user => {
     const fullName = `${user.firstName} ${user.middleName} ${user.surname}`.toLowerCase();
     const search = searchTerm.toLowerCase();
+    const userRole = roleLabels[user.role].toLowerCase();
     return fullName.includes(search) ||
       user.email.toLowerCase().includes(search) ||
       (user.employeeId && user.employeeId.toLowerCase().includes(search)) ||
-      (user.adminId && user.adminId.toLowerCase().includes(search));
+      (user.adminId && user.adminId.toLowerCase().includes(search)) ||
+      userRole.includes(search);
   });
 
   const handleEditClick = (user: User) => {
@@ -258,12 +260,15 @@ export default function UserDatabase() {
             <h2 className="text-2xl font-bold text-[#002147]">User Database</h2>
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <Input
-                placeholder="Search by name, email, or ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-md"
-              />
+              <div className="relative max-w-md w-full">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name, email, ID, or role..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
               
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Entries per page:</span>
@@ -309,7 +314,10 @@ export default function UserDatabase() {
                       <TableCell className="text-center">{roleLabels[user.role]}</TableCell>
                       <TableCell className="text-center">
                         <div className="flex justify-center">
-                          <Badge variant={user.status === "active" ? "default" : "secondary"}>
+                          <Badge 
+                            variant={user.status === "active" ? "default" : "secondary"}
+                            className="w-[70px] inline-flex items-center justify-center"
+                          >
                             {user.status}
                           </Badge>
                         </div>
