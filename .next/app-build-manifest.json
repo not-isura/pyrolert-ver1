@@ -21,10 +21,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/dashboard/page.js"
     ],
-    "/event-logs/page": [
+    "/room-data/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/event-logs/page.js"
+      "static/chunks/app/room-data/page.js"
     ]
   }
 }

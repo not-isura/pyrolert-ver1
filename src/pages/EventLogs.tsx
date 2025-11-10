@@ -9,8 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Download, Eye, ChevronLeft, ChevronRight, Search, ZoomIn, ZoomOut, Maximize2, RotateCw, Printer, FileText } from "lucide-react";
+import { Download, Eye, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
@@ -20,7 +19,6 @@ interface EventLog {
   location: string;
   eventType: StatusType;
   eventId: string;
-  pdfUrl?: string;
 }
 
 const mockLogs: EventLog[] = [
@@ -37,11 +35,8 @@ export default function EventLogs() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
-  const [dateFilter, setDateFilter] = useState<string>("");
-  const [previewLog, setPreviewLog] = useState<EventLog | null>(null);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [pdfZoom, setPdfZoom] = useState(100);
-  const [pdfRotation, setPdfRotation] = useState(0);
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
 
   const filteredLogs = mockLogs.filter(log => {
     const matchesSearch = log.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -49,15 +44,31 @@ export default function EventLogs() {
     
     const matchesEventType = eventTypeFilter === "all" || log.eventType === eventTypeFilter;
     
-    const matchesDate = !dateFilter || log.timestamp.startsWith(dateFilter);
+    // Date range filtering
+    let matchesDateRange = true;
+    if (startDate || endDate) {
+      const logDate = log.timestamp.split(' ')[0]; // Extract date part (YYYY-MM-DD)
+      
+      if (startDate && endDate) {
+        // Both start and end dates selected
+        matchesDateRange = logDate >= startDate && logDate <= endDate;
+      } else if (startDate) {
+        // Only start date selected - show from start date onwards
+        matchesDateRange = logDate >= startDate;
+      } else if (endDate) {
+        // Only end date selected - show up to end date
+        matchesDateRange = logDate <= endDate;
+      }
+    }
     
-    return matchesSearch && matchesEventType && matchesDate;
+    return matchesSearch && matchesEventType && matchesDateRange;
   });
 
   const clearFilters = () => {
     setSearchTerm("");
     setEventTypeFilter("all");
-    setDateFilter("");
+    setStartDate("");
+    setEndDate("");
   };
 
   // Mock function to fetch room data - replace with actual API call
@@ -240,10 +251,8 @@ export default function EventLogs() {
       const pdfBlob = pdf.output('blob');
       const pdfUrl = URL.createObjectURL(pdfBlob);
       
-      setPreviewLog({ ...log, pdfUrl } as any);
-      setIsPreviewOpen(true);
-      setPdfZoom(100);
-      setPdfRotation(0);
+      // Open PDF in new browser tab - let browser handle the viewer
+      window.open(pdfUrl, '_blank');
     } catch (error) {
       console.error('Failed to generate PDF preview:', error);
       alert('Failed to generate PDF preview. Please try again.');
@@ -258,22 +267,6 @@ export default function EventLogs() {
       console.error('Failed to download PDF:', error);
       alert('Failed to download PDF. Please try again.');
     }
-  };
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleZoomIn = () => {
-    setPdfZoom(prev => Math.min(prev + 25, 200));
-  };
-
-  const handleZoomOut = () => {
-    setPdfZoom(prev => Math.max(prev - 25, 50));
-  };
-
-  const handleRotate = () => {
-    setPdfRotation(prev => (prev + 90) % 360);
   };
 
   return (
@@ -335,12 +328,24 @@ export default function EventLogs() {
                 </div>
 
                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <span className="text-sm text-muted-foreground min-w-fit">Date:</span>
+                  <span className="text-sm text-muted-foreground min-w-fit">From:</span>
                   <Input
                     type="date"
-                    value={dateFilter}
-                    onChange={(e) => setDateFilter(e.target.value)}
-                    className="w-full sm:w-48"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full sm:w-44"
+                    placeholder="Start date"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <span className="text-sm text-muted-foreground min-w-fit">To:</span>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full sm:w-44"
+                    placeholder="End date"
                   />
                 </div>
 
@@ -431,155 +436,6 @@ export default function EventLogs() {
           </div>
         </main>
       </div>
-
-      {/* PDF Preview Dialog */}
-      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-[95vw] sm:max-w-5xl h-[90vh] flex flex-col p-0 gap-0">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b bg-muted/30">
-            <div className="flex items-center gap-3">
-              <FileText className="h-5 w-5 text-primary" />
-              <div>
-                <DialogTitle className="text-lg sm:text-xl font-bold text-foreground">
-                  Event Report Preview
-                </DialogTitle>
-              </div>
-            </div>
-          </div>
-
-          {/* Event Info Bar */}
-          {previewLog && (
-            <div className="px-4 sm:px-6 py-3 bg-muted/50 border-b">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-foreground">{previewLog.location}</span>
-                  <span className="text-muted-foreground">•</span>
-                  <span className="text-muted-foreground">{previewLog.timestamp}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">Event ID:</span>
-                  <span className="font-mono text-xs bg-background px-2 py-1 rounded">
-                    {previewLog.eventId}
-                  </span>
-                  <StatusBadge status={previewLog.eventType} />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* PDF Toolbar */}
-          <div className="px-4 sm:px-6 py-3 border-b bg-background">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1 sm:gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleZoomOut}
-                  disabled={pdfZoom <= 50}
-                  title="Zoom Out"
-                >
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-                <span className="text-sm font-medium min-w-[60px] text-center">
-                  {pdfZoom}%
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleZoomIn}
-                  disabled={pdfZoom >= 200}
-                  title="Zoom In"
-                >
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-                <div className="hidden sm:block w-px h-6 bg-border mx-2" />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRotate}
-                  className="hidden sm:flex"
-                  title="Rotate"
-                >
-                  <RotateCw className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPdfZoom(100)}
-                  className="hidden sm:flex"
-                  title="Fit Width"
-                >
-                  <Maximize2 className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="text-xs sm:text-sm text-muted-foreground">
-                Page 1 of 3
-              </div>
-            </div>
-          </div>
-
-          {/* PDF Viewer */}
-          <div className="flex-1 overflow-auto bg-muted/20 p-4">
-            {previewLog?.pdfUrl ? (
-              <div 
-                className="bg-white shadow-lg mx-auto rounded-lg overflow-hidden"
-                style={{
-                  maxWidth: '210mm',
-                  height: 'auto',
-                  minHeight: '297mm',
-                  transform: `scale(${pdfZoom / 100}) rotate(${pdfRotation}deg)`,
-                  transformOrigin: 'top center',
-                  transition: 'transform 0.2s ease-in-out',
-                }}
-              >
-                <iframe
-                  src={previewLog.pdfUrl}
-                  className="w-full h-full"
-                  style={{ 
-                    minHeight: '297mm',
-                    border: 'none',
-                  }}
-                  title="PDF Preview"
-                />
-              </div>
-            ) : (
-              <div className="bg-white shadow-lg mx-auto rounded-lg overflow-hidden p-8 max-w-2xl">
-                <div className="text-center space-y-4">
-                  <FileText className="h-16 w-16 mx-auto text-muted-foreground" />
-                  <div className="space-y-2">
-                    <p className="text-lg font-semibold text-foreground">
-                      Generating PDF...
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Please wait while we generate your report
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Footer Actions */}
-          <div className="px-4 sm:px-6 py-4 border-t bg-muted/30">
-            <div className="flex items-center justify-end gap-2">
-              <Button
-                variant="outline"
-                className="flex-1 sm:flex-none"
-                onClick={() => previewLog && handleDownload(previewLog)}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download
-              </Button>
-              <Button
-                onClick={() => setIsPreviewOpen(false)}
-                className="flex-1 sm:flex-none"
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

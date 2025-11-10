@@ -358,6 +358,62 @@ export default function RoomData() {
                   </CardContent>
                 </Card>
 
+                {/* Occupant Count - Hidden on mobile, shows in right sidebar on lg+ */}
+                <Card className="hidden lg:block">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-bold text-[#002147]">Occupants</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Main Count Display */}
+                    <div className="flex items-center justify-center gap-4">
+                      {/* Large Occupant Number */}
+                      <div className="flex items-baseline gap-2">
+                        <Users className="h-8 w-8 text-[#002147]" />
+                        <span className="text-5xl font-bold text-[#002147]">{roomData.occupants}</span>
+                      </div>
+                      
+                      {/* Trend Indicator */}
+                      {roomData.occupantChange !== 0 && (
+                        <div className={`flex items-center gap-1 px-3 py-1.5 rounded-full ${
+                          roomData.occupantChange > 0 
+                            ? 'bg-green-100' 
+                            : 'bg-red-100'
+                        }`}>
+                          {roomData.occupantChange > 0 ? (
+                            <TrendingUp className={`h-5 w-5 ${
+                              roomData.occupantChange > 0 ? 'text-green-600' : 'text-red-600'
+                            }`} />
+                          ) : (
+                            <TrendingDown className="h-5 w-5 text-red-600" />
+                          )}
+                          <span className={`text-lg font-bold ${
+                            roomData.occupantChange > 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {roomData.occupantChange > 0 ? '+' : ''}{roomData.occupantChange}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {roomData.occupantChange === 0 && (
+                        <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-100">
+                          <Minus className="h-5 w-5 text-gray-600" />
+                          <span className="text-lg font-bold text-gray-600">0</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Context Information */}
+                    <div className="text-center space-y-1">
+                      <p className="text-sm text-[#6B7280]">
+                        vs. 30 minutes ago
+                      </p>
+                      <p className="text-xs text-[#9CA3AF]">
+                        Last updated: {roomData.lastOccupantUpdate}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 {/* Quick Actions */}
                 <Card>
                   <CardHeader>
@@ -571,64 +627,6 @@ export default function RoomData() {
                           />
                         ))}
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Occupant Count - Hidden on mobile, shows in right sidebar on lg+ */}
-              <div className="hidden lg:block lg:col-span-4 lg:order-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg font-bold text-[#002147]">Occupants</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Main Count Display */}
-                    <div className="flex items-center justify-center gap-4">
-                      {/* Large Occupant Number */}
-                      <div className="flex items-baseline gap-2">
-                        <Users className="h-8 w-8 text-[#002147]" />
-                        <span className="text-5xl font-bold text-[#002147]">{roomData.occupants}</span>
-                      </div>
-                      
-                      {/* Trend Indicator */}
-                      {roomData.occupantChange !== 0 && (
-                        <div className={`flex items-center gap-1 px-3 py-1.5 rounded-full ${
-                          roomData.occupantChange > 0 
-                            ? 'bg-green-100' 
-                            : 'bg-red-100'
-                        }`}>
-                          {roomData.occupantChange > 0 ? (
-                            <TrendingUp className={`h-5 w-5 ${
-                              roomData.occupantChange > 0 ? 'text-green-600' : 'text-red-600'
-                            }`} />
-                          ) : (
-                            <TrendingDown className="h-5 w-5 text-red-600" />
-                          )}
-                          <span className={`text-lg font-bold ${
-                            roomData.occupantChange > 0 ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {roomData.occupantChange > 0 ? '+' : ''}{roomData.occupantChange}
-                          </span>
-                        </div>
-                      )}
-                      
-                      {roomData.occupantChange === 0 && (
-                        <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-100">
-                          <Minus className="h-5 w-5 text-gray-600" />
-                          <span className="text-lg font-bold text-gray-600">0</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Context Information */}
-                    <div className="text-center space-y-1">
-                      <p className="text-sm text-[#6B7280]">
-                        vs. 30 minutes ago
-                      </p>
-                      <p className="text-xs text-[#9CA3AF]">
-                        Last updated: {roomData.lastOccupantUpdate}
-                      </p>
                     </div>
                   </CardContent>
                 </Card>
