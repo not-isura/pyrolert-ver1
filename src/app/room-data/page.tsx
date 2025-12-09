@@ -1,5 +1,10 @@
 import RoomData from "@/pages/RoomData";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 export default function RoomDataPage() {
-  return <RoomData />;
+  return (
+    <ProtectedRoute allowedRoles={['admin', 'security', 'dean', 'facility', 'director']}>
+      <RoomData />
+    </ProtectedRoute>
+  );
 }

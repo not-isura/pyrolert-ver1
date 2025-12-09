@@ -9,10 +9,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
+import { usePermissions } from "@/hooks/use-permissions";
 
 export default function Terms() {
   const router = useRouter();
   const { toast } = useToast();
+  const { canEditTerms } = usePermissions();
   const [content, setContent] = useState(
     `TERMS AND CONDITIONS
 
@@ -74,6 +76,7 @@ For questions regarding these terms, please contact your system administrator.`
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   className="min-h-[500px] font-mono text-sm"
+                  disabled={!canEditTerms}
                 />
 
                 <div className="flex justify-end gap-3">
@@ -83,9 +86,11 @@ For questions regarding these terms, please contact your system administrator.`
                   >
                     Back to Settings
                   </Button>
-                  <Button onClick={handleSave}>
-                    Save Changes
-                  </Button>
+                  {canEditTerms && (
+                    <Button onClick={handleSave}>
+                      Save Changes
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

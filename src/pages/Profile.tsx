@@ -10,10 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
+import { usePermissions } from "@/hooks/use-permissions";
 
 export default function Profile() {
   const router = useRouter();
   const { toast } = useToast();
+  const { canEditProfile } = usePermissions();
   const [formData, setFormData] = useState({
     firstName: "Admin",
     middleName: "",
@@ -64,6 +66,7 @@ export default function Profile() {
                       id="firstName"
                       value={formData.firstName}
                       onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                      disabled={!canEditProfile}
                     />
                   </div>
 
@@ -73,6 +76,7 @@ export default function Profile() {
                       id="middleName"
                       value={formData.middleName}
                       onChange={(e) => setFormData(prev => ({ ...prev, middleName: e.target.value }))}
+                      disabled={!canEditProfile}
                     />
                   </div>
 
@@ -82,6 +86,7 @@ export default function Profile() {
                       id="surname"
                       value={formData.surname}
                       onChange={(e) => setFormData(prev => ({ ...prev, surname: e.target.value }))}
+                      disabled={!canEditProfile}
                     />
                   </div>
                 </div>
@@ -95,6 +100,7 @@ export default function Profile() {
                       type="email"
                       value={formData.email}
                       onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                      disabled={!canEditProfile}
                     />
                   </div>
 
@@ -128,6 +134,7 @@ export default function Profile() {
                         type="password"
                         value={formData.currentPassword}
                         onChange={(e) => setFormData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                        disabled={!canEditProfile}
                       />
                     </div>
 
@@ -138,6 +145,7 @@ export default function Profile() {
                         type="password"
                         value={formData.newPassword}
                         onChange={(e) => setFormData(prev => ({ ...prev, newPassword: e.target.value }))}
+                        disabled={!canEditProfile}
                       />
                     </div>
 
@@ -148,6 +156,7 @@ export default function Profile() {
                         type="password"
                         value={formData.confirmPassword}
                         onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                        disabled={!canEditProfile}
                       />
                     </div>
                   </div>
@@ -160,9 +169,11 @@ export default function Profile() {
                   >
                     Back to Settings
                   </Button>
-                  <Button onClick={handleSave}>
-                    Save Changes
-                  </Button>
+                  {canEditProfile && (
+                    <Button onClick={handleSave}>
+                      Save Changes
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

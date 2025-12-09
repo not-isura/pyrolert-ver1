@@ -2,18 +2,27 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Header } from "@/components/Header";
-import { Sidebar } from "@/components/Sidebar";
+import PageLayout from "@/components/PageLayout";
+import { UserStatusBadge, UserStatusType } from "@/components/UserStatusBadge";
+import PaginationControls from "@/components/PaginationControls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Edit, Trash2, ChevronLeft, ChevronRight, ArrowLeft, Eye, EyeOff, AlertTriangle, Search } from "lucide-react";
+import { Edit, Trash2, ArrowLeft, Eye, EyeOff, AlertTriangle, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  getUsers, 
+  createUser, 
+  updateUser, 
+  deleteUser,
+  type User as SupabaseUser,
+  type UserRole,
+  type UserStatus
+} from "@/services/supabaseService";
 
 interface User {
   id: string;
@@ -22,32 +31,26 @@ interface User {
   middleName: string;
   surname: string;
   email: string;
-  role: "security_officer" | "school_admin" | "dean" | "facility_mgmt" | "system_admin";
-  status: "active" | "inactive";
+  role: "security" | "admin" | "dean" | "facility" | "director";
+  status: UserStatusType;
   password?: string;
   adminId?: string;
 }
 
 const roleLabels = {
-  security_officer: "Security Officer",
-  school_admin: "School Administrator",
+  security: "Security Officer",
+  admin: "Pyrolert Admin",
   dean: "Dean",
-  facility_mgmt: "Facility Management Officer",
-  system_admin: "Pyrolert System Admin",
+  facility: "Facility Management Officer",
+  director: "School Director",
 };
-
-const mockUsers: User[] = [
-  { id: "1", adminId: "ADMIN001", firstName: "Admin", middleName: "", surname: "User", email: "admin@pyrolert.com", role: "system_admin", status: "active", password: "pyrolert_2025!" },
-  { id: "2", employeeId: "SEC001", firstName: "John", middleName: "Michael", surname: "Doe", email: "john.doe@pyrolert.com", role: "security_officer", status: "active", password: "pyrolert_2025!" },
-  { id: "3", employeeId: "DEAN001", firstName: "Jane", middleName: "Marie", surname: "Smith", email: "jane.smith@pyrolert.com", role: "dean", status: "active", password: "pyrolert_2025!" },
-  { id: "4", employeeId: "SA001", firstName: "Bob", middleName: "", surname: "Johnson", email: "bob.j@pyrolert.com", role: "school_admin", status: "inactive", password: "pyrolert_2025!" },
-  { id: "5", employeeId: "FM001", firstName: "Alice", middleName: "Grace", surname: "Williams", email: "alice.w@pyrolert.com", role: "facility_mgmt", status: "active", password: "pyrolert_2025!" },
-];
 
 export default function UserDatabase() {
   const router = useRouter();
   const { toast } = useToast();
-  const [users, setUsers] = useState(mockUsers);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState("10");
   const [currentPage, setCurrentPage] = useState(1);
@@ -62,6 +65,38 @@ export default function UserDatabase() {
   const [viewportOffset, setViewportOffset] = useState(0);
   const [isSelectOpen, setIsSelectOpen] = useState(false);
   const dummyInputRef = useRef<HTMLInputElement>(null);
+
+  // Load users on mount
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const supabaseUsers = await getUsers();
+      
+      // Transform Supabase users to match component interface
+      const transformedUsers: User[] = supabaseUsers.map(user => ({
+        id: user.id,
+        firstName: user.first_name,
+        middleName: "",
+        surname: user.last_name,
+        email: user.email,
+        role: user.role as "security" | "admin" | "dean" | "facility",
+        status: user.status as UserStatusType,
+        password: user.password,
+      }));
+      
+      setUsers(transformedUsers);
+    } catch (err) {
+      console.error('Error loading users:', err);
+      setError('Failed to load users. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Keyboard detection for mobile - lock once keyboard is detected
   useEffect(() => {
@@ -190,16 +225,39 @@ export default function UserDatabase() {
     }, 100);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (editingUser) {
-      setUsers(users.map(u => u.id === editingUser.id ? editingUser : u));
-      const fullName = `${editingUser.firstName} ${editingUser.middleName} ${editingUser.surname}`.trim();
-      toast({
-        title: "User Updated",
-        description: `User information for ${fullName} has been updated successfully.`,
-      });
-      setIsEditDialogOpen(false);
-      setEditingUser(null);
+      try {
+        // Update user in Supabase
+        await updateUser(editingUser.id, {
+          first_name: editingUser.firstName,
+          last_name: editingUser.surname,
+          email: editingUser.email,
+          role: editingUser.role as UserRole,
+          status: editingUser.status as UserStatus,
+          password: editingUser.password,
+        });
+        
+        // Update local state
+        setUsers(users.map(u => u.id === editingUser.id ? editingUser : u));
+        const fullName = `${editingUser.firstName} ${editingUser.middleName} ${editingUser.surname}`.trim();
+        toast({
+          title: "User Updated",
+          description: `User information for ${fullName} has been updated successfully.`,
+        });
+        setIsEditDialogOpen(false);
+        setEditingUser(null);
+        
+        // Reload users to get fresh data
+        loadUsers();
+      } catch (err) {
+        console.error('Error updating user:', err);
+        toast({
+          title: "Update Failed",
+          description: "Failed to update user. Please try again.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -210,9 +268,9 @@ export default function UserDatabase() {
     setIsDeleteDialogOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deletingUser) {
-      // Validate password (in a real app, you'd verify against the actual user's password)
+      // Validate password
       if (!deletePassword) {
         toast({
           title: "Password Required",
@@ -222,32 +280,68 @@ export default function UserDatabase() {
         return;
       }
 
-      // TODO: In production, verify password against backend
-      // For now, just proceed with deletion
-      setUsers(users.filter(u => u.id !== deletingUser.id));
-      const fullName = `${deletingUser.firstName} ${deletingUser.middleName} ${deletingUser.surname}`.trim();
-      toast({
-        title: "User Deleted",
-        description: `${fullName} has been removed from the system.`,
-        variant: "destructive",
-      });
-      setIsDeleteDialogOpen(false);
-      setDeletingUser(null);
-      setDeletePassword("");
+      try {
+        // Delete user from Supabase
+        await deleteUser(deletingUser.id);
+        
+        // Update local state
+        setUsers(users.filter(u => u.id !== deletingUser.id));
+        const fullName = `${deletingUser.firstName} ${deletingUser.middleName} ${deletingUser.surname}`.trim();
+        toast({
+          title: "User Deleted",
+          description: `${fullName} has been removed from the system.`,
+          variant: "destructive",
+        });
+        setIsDeleteDialogOpen(false);
+        setDeletingUser(null);
+        setDeletePassword("");
+        
+        // Reload users to get fresh data
+        loadUsers();
+      } catch (err) {
+        console.error('Error deleting user:', err);
+        toast({
+          title: "Delete Failed",
+          description: "Failed to delete user. Please try again.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
-  const isSystemAdmin = editingUser?.role === "system_admin";
+  const isSystemAdmin = editingUser?.role === "admin";
+
+  // Show loading state
+  if (loading) {
+    return (
+      <PageLayout>
+        <div className="flex items-center justify-center py-12">
+          <p className="text-muted-foreground">Loading users...</p>
+        </div>
+      </PageLayout>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <PageLayout>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-600">{error}</p>
+          <button 
+            onClick={loadUsers}
+            className="mt-2 text-sm text-red-700 underline hover:no-underline"
+          >
+            Try again
+          </button>
+        </div>
+      </PageLayout>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header onLogout={() => router.push("/")} onSettings={() => router.push("/settings")} />
-      
-      <div className="flex">
-        <Sidebar />
-        
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-          <div className="max-w-7xl mx-auto space-y-6">
+    <PageLayout>
+      <div className="max-w-7xl mx-auto space-y-6">
             <Button 
               variant="ghost" 
               onClick={() => router.push("/settings")}
@@ -293,36 +387,31 @@ export default function UserDatabase() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-center">ID</TableHead>
-                    <TableHead className="text-center">Name</TableHead>
-                    <TableHead className="text-center">Email</TableHead>
-                    <TableHead className="text-center">Role</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                    <TableHead className="text-center">Actions</TableHead>
+                    <TableHead className="text-center whitespace-nowrap">ID</TableHead>
+                    <TableHead className="text-center whitespace-nowrap">Name</TableHead>
+                    <TableHead className="text-center whitespace-nowrap">Email</TableHead>
+                    <TableHead className="text-center whitespace-nowrap">Role</TableHead>
+                    <TableHead className="text-center whitespace-nowrap">Status</TableHead>
+                    <TableHead className="text-center whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredUsers.map((user) => (
                     <TableRow key={user.id}>
-                      <TableCell className="font-mono text-sm text-center">
-                        {user.role === "system_admin" ? user.adminId : user.employeeId}
+                      <TableCell className="font-mono text-sm text-center whitespace-nowrap">
+                        {user.employeeId || user.id}
                       </TableCell>
-                      <TableCell className="font-medium text-center">
+                      <TableCell className="font-medium text-center whitespace-nowrap">
                         {`${user.firstName} ${user.middleName} ${user.surname}`.replace(/\s+/g, ' ').trim()}
                       </TableCell>
-                      <TableCell className="text-center">{user.email}</TableCell>
-                      <TableCell className="text-center">{roleLabels[user.role]}</TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="text-center whitespace-nowrap">{user.email}</TableCell>
+                      <TableCell className="text-center whitespace-nowrap">{roleLabels[user.role]}</TableCell>
+                      <TableCell className="text-center whitespace-nowrap">
                         <div className="flex justify-center">
-                          <Badge 
-                            variant={user.status === "active" ? "default" : "secondary"}
-                            className="w-[70px] inline-flex items-center justify-center"
-                          >
-                            {user.status}
-                          </Badge>
+                          <UserStatusBadge status={user.status} />
                         </div>
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="text-center whitespace-nowrap">
                         <div className="flex justify-center gap-2">
                           <Button 
                             variant="ghost" 
@@ -344,37 +433,13 @@ export default function UserDatabase() {
                   ))}
                 </TableBody>
               </Table>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                Showing {filteredUsers.length} of {users.length} entries
-              </p>
-              
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                
-                <span className="text-sm font-medium px-4">Page {currentPage}</span>
-                
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  onClick={() => setCurrentPage(p => p + 1)}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+            </div>            <PaginationControls
+              currentPage={currentPage}
+              totalItems={users.length}
+              filteredItems={filteredUsers.length}
+              onPageChange={setCurrentPage}
+            />
           </div>
-        </main>
-      </div>
 
       {/* Edit User Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -565,10 +630,11 @@ export default function UserDatabase() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="security_officer">Security Officer</SelectItem>
-                          <SelectItem value="school_admin">School Administrator</SelectItem>
+                          <SelectItem value="security">Security Officer</SelectItem>
+                          <SelectItem value="admin">Pyrolert Admin</SelectItem>
                           <SelectItem value="dean">Dean</SelectItem>
-                          <SelectItem value="facility_mgmt">Facility Management Officer</SelectItem>
+                          <SelectItem value="facility">Facility Management Officer</SelectItem>
+                          <SelectItem value="director">School Director</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -672,6 +738,6 @@ export default function UserDatabase() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PageLayout>
   );
 }

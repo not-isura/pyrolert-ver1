@@ -1,5 +1,10 @@
 import UserDatabase from "@/pages/UserDatabase";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 export default function UserDatabasePage() {
-  return <UserDatabase />;
+  return (
+    <ProtectedRoute allowedRoles={['admin']}>
+      <UserDatabase />
+    </ProtectedRoute>
+  );
 }

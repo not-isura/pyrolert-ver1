@@ -1,6 +1,6 @@
 "use client";
 
-import { StatusType } from "./StatusBadge";
+import { StatusBadge, StatusType } from "./StatusBadge";
 import { Thermometer, Activity, Users } from "lucide-react";
 
 interface RoomCardProps {
@@ -67,15 +67,7 @@ export const RoomCard = ({
         <div className="flex items-center gap-2 flex-wrap">
           <Activity className="h-4 w-4 text-[#002147] flex-shrink-0" />
           <span className="text-xs sm:text-[14px] font-semibold text-[#002147]">Status:</span>
-          <span 
-            className="inline-block px-2 sm:px-3 py-1 rounded-full text-xs sm:text-[14px] font-semibold"
-            style={{ 
-              backgroundColor: currentStatus.bg, 
-              color: currentStatus.text 
-            }}
-          >
-            {status === 'alert' ? 'High Alert' : status.charAt(0).toUpperCase() + status.slice(1)}
-          </span>
+          <StatusBadge status={status} />
         </div>
 
         {/* Occupants Row */}

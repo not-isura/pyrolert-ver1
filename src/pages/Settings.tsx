@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, FileText, UserPlus, Database } from "lucide-react";
+import { User, FileText, UserPlus, Database, DoorOpen } from "lucide-react";
+import { usePermissions } from "@/hooks/use-permissions";
 
 const settingsOptions = [
   {
@@ -12,29 +13,46 @@ const settingsOptions = [
     description: "Manage your personal information and password",
     icon: User,
     path: "/settings/profile",
+    roles: ['admin', 'security', 'dean', 'facility', 'director'], // All roles can access
   },
   {
     title: "Terms & Conditions",
     description: "View and edit terms and conditions",
     icon: FileText,
     path: "/settings/terms",
+    roles: ['admin', 'security', 'dean', 'facility', 'director'], // All roles can access
   },
   {
     title: "Account Creation",
     description: "Register new user accounts",
     icon: UserPlus,
     path: "/settings/create-account",
+    roles: ['admin'], // Admin only
   },
   {
     title: "User Database",
     description: "Manage existing user accounts",
     icon: Database,
     path: "/settings/users",
+    roles: ['admin'], // Admin only
+  },
+  {
+    title: "Room Management",
+    description: "Edit room details and manage sensors",
+    icon: DoorOpen,
+    path: "/settings/rooms",
+    roles: ['admin'], // Admin only
   },
 ];
 
 export default function Settings() {
   const router = useRouter();
+  const { role } = usePermissions();
+
+  // Filter settings options based on user role
+  const visibleOptions = settingsOptions.filter(option => 
+    role && option.roles.includes(role)
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -48,7 +66,7 @@ export default function Settings() {
             <h2 className="text-2xl font-bold text-foreground">Settings</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {settingsOptions.map((option) => (
+              {visibleOptions.map((option) => (
                 <Card 
                   key={option.path}
                   className="hover:shadow-lg transition-shadow cursor-pointer"

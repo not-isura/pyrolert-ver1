@@ -1,5 +1,10 @@
 import CreateAccount from "@/pages/CreateAccount";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 export default function CreateAccountPage() {
-  return <CreateAccount />;
+  return (
+    <ProtectedRoute allowedRoles={['admin']}>
+      <CreateAccount />
+    </ProtectedRoute>
+  );
 }

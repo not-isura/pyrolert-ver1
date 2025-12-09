@@ -192,11 +192,11 @@ export default function CreateAccount() {
                           <SelectValue placeholder="Select role" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="security_officer">Security Officer</SelectItem>
-                          <SelectItem value="school_admin">School Administrator</SelectItem>
+                          <SelectItem value="security">Security Officer</SelectItem>
+                          <SelectItem value="admin">Pyrolert Admin</SelectItem>
                           <SelectItem value="dean">Dean</SelectItem>
-                          <SelectItem value="facility_mgmt">Facility Management Officer</SelectItem>
-                          <SelectItem value="system_admin">Pyrolert System Admin</SelectItem>
+                          <SelectItem value="facility">Facility Management Officer</SelectItem>
+                          <SelectItem value="director">School Director</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

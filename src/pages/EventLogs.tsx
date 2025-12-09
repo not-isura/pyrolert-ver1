@@ -1,17 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Header } from "@/components/Header";
-import { Sidebar } from "@/components/Sidebar";
+import PageLayout from "@/components/PageLayout";
 import { StatusBadge, StatusType } from "@/components/StatusBadge";
+import PaginationControls from "@/components/PaginationControls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Eye, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Download, Eye, Search } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { 
+  getEventLogs, 
+  getEventLogsByDateRange, 
+  getRoomById, 
+  getSensorsByRoom,
+  type EventLog as SupabaseEventLog 
+} from "@/services/supabaseService";
 
 interface EventLog {
   id: string;
@@ -19,18 +26,14 @@ interface EventLog {
   location: string;
   eventType: StatusType;
   eventId: string;
+  roomId?: string; // Add roomId to store the original room_id
 }
-
-const mockLogs: EventLog[] = [
-  { id: "1", timestamp: "2025-01-15 14:30:22", location: "Conference Room A", eventType: "normal", eventId: "2025-01-15_CONF_A" },
-  { id: "2", timestamp: "2025-01-15 13:15:45", location: "Laboratory B", eventType: "warning", eventId: "2025-01-15_LAB_B" },
-  { id: "3", timestamp: "2025-01-15 11:42:10", location: "Storage Room C", eventType: "alert", eventId: "2025-01-15_STOR_C" },
-  { id: "4", timestamp: "2025-01-15 09:20:33", location: "Conference Room A", eventType: "normal", eventId: "2025-01-15_CONF_A_2" },
-  { id: "5", timestamp: "2025-01-14 16:55:18", location: "Laboratory B", eventType: "error", eventId: "2025-01-14_LAB_B" },
-];
 
 export default function EventLogs() {
   const router = useRouter();
+  const [logs, setLogs] = useState<EventLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [entriesPerPage, setEntriesPerPage] = useState("10");
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
@@ -38,7 +41,108 @@ export default function EventLogs() {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
 
-  const filteredLogs = mockLogs.filter(log => {
+  useEffect(() => {
+    loadEventLogs();
+  }, [startDate, endDate]);
+
+  const loadEventLogs = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      let supabaseLogs: SupabaseEventLog[];
+      
+      // Use date range filter if dates are provided
+      if (startDate || endDate) {
+        const start = startDate || '2000-01-01';
+        const end = endDate || '2099-12-31';
+        supabaseLogs = await getEventLogsByDateRange(start, end);
+      } else {
+        supabaseLogs = await getEventLogs();
+      }
+      
+      console.log('Raw Supabase event logs:', supabaseLogs);
+      console.log('Number of logs fetched:', supabaseLogs.length);
+      
+      // Create a map to store room names (cache to avoid duplicate queries)
+      const roomNameCache: { [key: string]: string } = {};
+      
+      // Create a counter for each room to generate sequential event IDs
+      const roomEventCounters: { [key: string]: number } = {};
+      
+      // Transform Supabase event logs to match the component's interface
+      const transformedLogs: EventLog[] = await Promise.all(
+        supabaseLogs.map(async (log, index) => {
+          // Get room name from cache or fetch it
+          let roomName = log.location; // Default to location field (room_id)
+          
+          if (log.room_id || log.location.startsWith('Room_')) {
+            const roomId = log.room_id || log.location;
+            
+            // Check cache first
+            if (roomNameCache[roomId]) {
+              roomName = roomNameCache[roomId];
+            } else {
+              // Fetch room details
+              try {
+                const room = await getRoomById(roomId);
+                if (room) {
+                  roomName = room.name;
+                  roomNameCache[roomId] = room.name;
+                }
+              } catch (error) {
+                console.error(`Error fetching room ${roomId}:`, error);
+              }
+            }
+          }
+          
+          // Generate event ID in format: YYYY-MM-DD_ROOM_XXX_NNN
+          const logDate = new Date(log.timestamp);
+          const dateStr = logDate.toISOString().split('T')[0]; // YYYY-MM-DD
+          const roomIdPart = (log.room_id || log.location).replace('Room_', '');
+          
+          // Increment counter for this room
+          const roomKey = log.room_id || log.location;
+          if (!roomEventCounters[roomKey]) {
+            roomEventCounters[roomKey] = 0;
+          }
+          roomEventCounters[roomKey]++;
+          
+          const eventIdNumber = String(roomEventCounters[roomKey]).padStart(3, '0');
+          const formattedEventId = `${dateStr}_ROOM_${roomIdPart}_${eventIdNumber}`;
+          
+          return {
+            id: log.id,
+            timestamp: new Date(log.timestamp).toLocaleString('en-US', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false
+            }).replace(',', ''),
+            location: roomName, // Use the fetched room name
+            eventType: log.event_type as StatusType,
+            eventId: formattedEventId, // Use the formatted event ID
+            roomId: log.room_id || log.location, // Store the original room_id
+          };
+        })
+      );
+      
+      console.log('Transformed logs:', transformedLogs);
+      console.log('First log example:', transformedLogs[0]);
+      
+      setLogs(transformedLogs);
+    } catch (err) {
+      console.error('Error loading event logs:', err);
+      setError('Failed to load event logs. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredLogs = logs.filter(log => {
     const matchesSearch = log.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.eventId.toLowerCase().includes(searchTerm.toLowerCase());
     
@@ -71,27 +175,124 @@ export default function EventLogs() {
     setEndDate("");
   };
 
-  // Mock function to fetch room data - replace with actual API call
+  // Fetch room data for PDF generation
   const fetchRoomData = async (eventId: string) => {
-    // In production, this would fetch from your database/API
-    return {
-      eventId: eventId,
-      location: mockLogs.find(l => l.eventId === eventId)?.location || "Conference Room A",
-      timestamp: mockLogs.find(l => l.eventId === eventId)?.timestamp || new Date().toLocaleString(),
-      eventType: mockLogs.find(l => l.eventId === eventId)?.eventType || "normal",
-      status: "Normal Operation",
-      occupants: 12,
-      occupantChange: 2,
-      sensors: {
-        temperature: { value: 22, unit: "°C", status: "NORMAL", connected: true },
-        co: { value: 5, unit: "ppm", status: "NORMAL", connected: true },
-        no2: { value: 12, unit: "ppm", status: "NORMAL", connected: true },
-        o2: { value: 20.9, unit: "%", status: "NORMAL", connected: false },
-        pm25: { value: 8, unit: "µg/m³", status: "NORMAL", connected: true },
-        pm10: { value: 15, unit: "µg/m³", status: "NORMAL", connected: true },
-      },
-      cameraSnapshot: "/placeholder-camera.jpg", // Replace with actual image URL
-    };
+    try {
+      // Find the event log
+      const log = logs.find(l => l.eventId === eventId);
+      if (!log) {
+        throw new Error('Event log not found');
+      }
+      
+      // Try to get the room data from Supabase using the stored roomId
+      const roomId = log.roomId || log.location;
+      const rooms = await getRoomById(roomId);
+      
+      let roomData = {
+        eventId: eventId,
+        location: log.location, // This is now the room name
+        timestamp: log.timestamp,
+        eventType: log.eventType,
+        status: log.eventType === 'normal' ? 'Normal Operation' : 
+                log.eventType === 'warning' ? 'Warning Status' : 
+                log.eventType === 'alert' ? 'High Alert' : 'Error Status',
+        occupants: 0,
+        occupantChange: 0,
+        sensors: {
+          temperature: { value: 0, unit: "°C", status: "UNKNOWN", connected: false },
+          co: { value: 0, unit: "ppm", status: "UNKNOWN", connected: false },
+          no2: { value: 0, unit: "ppm", status: "UNKNOWN", connected: false },
+          o2: { value: 0, unit: "%", status: "UNKNOWN", connected: false },
+          pm25: { value: 0, unit: "µg/m³", status: "UNKNOWN", connected: false },
+          pm10: { value: 0, unit: "µg/m³", status: "UNKNOWN", connected: false },
+        },
+        cameraSnapshot: "/placeholder-camera.jpg",
+      };
+      
+      // If room exists, get its sensors
+      if (rooms) {
+        const sensors = await getSensorsByRoom(rooms.id);
+        
+        roomData.occupants = rooms.occupants || 0;
+        roomData.occupantChange = rooms.occupant_change || 0;
+        
+        // Map sensors to the expected format
+        sensors.forEach(sensor => {
+          const statusMap: { [key: string]: string } = {
+            'normal': 'NORMAL',
+            'warning': 'WARNING',
+            'critical': 'CRITICAL',
+          };
+          
+          if (sensor.type === 'temperature') {
+            roomData.sensors.temperature = {
+              value: sensor.value,
+              unit: sensor.unit,
+              status: statusMap[sensor.status] || 'UNKNOWN',
+              connected: sensor.connected,
+            };
+          } else if (sensor.type === 'co') {
+            roomData.sensors.co = {
+              value: sensor.value,
+              unit: sensor.unit,
+              status: statusMap[sensor.status] || 'UNKNOWN',
+              connected: sensor.connected,
+            };
+          } else if (sensor.type === 'no2') {
+            roomData.sensors.no2 = {
+              value: sensor.value,
+              unit: sensor.unit,
+              status: statusMap[sensor.status] || 'UNKNOWN',
+              connected: sensor.connected,
+            };
+          } else if (sensor.type === 'o2') {
+            roomData.sensors.o2 = {
+              value: sensor.value,
+              unit: sensor.unit,
+              status: statusMap[sensor.status] || 'UNKNOWN',
+              connected: sensor.connected,
+            };
+          } else if (sensor.type === 'pm25') {
+            roomData.sensors.pm25 = {
+              value: sensor.value,
+              unit: sensor.unit,
+              status: statusMap[sensor.status] || 'UNKNOWN',
+              connected: sensor.connected,
+            };
+          } else if (sensor.type === 'pm10') {
+            roomData.sensors.pm10 = {
+              value: sensor.value,
+              unit: sensor.unit,
+              status: statusMap[sensor.status] || 'UNKNOWN',
+              connected: sensor.connected,
+            };
+          }
+        });
+      }
+      
+      return roomData;
+    } catch (error) {
+      console.error('Error fetching room data:', error);
+      // Return default data if fetch fails
+      return {
+        eventId: eventId,
+        location: logs.find(l => l.eventId === eventId)?.location || "Unknown",
+        timestamp: logs.find(l => l.eventId === eventId)?.timestamp || new Date().toLocaleString(),
+        eventType: logs.find(l => l.eventId === eventId)?.eventType || "normal",
+        status: "Unknown Status",
+        occupants: 0,
+        occupantChange: 0,
+        sensors: {
+          temperature: { value: 0, unit: "°C", status: "UNKNOWN", connected: false },
+          co: { value: 0, unit: "ppm", status: "UNKNOWN", connected: false },
+          no2: { value: 0, unit: "ppm", status: "UNKNOWN", connected: false },
+          o2: { value: 0, unit: "%", status: "UNKNOWN", connected: false },
+          pm25: { value: 0, unit: "µg/m³", status: "UNKNOWN", connected: false },
+          pm10: { value: 0, unit: "µg/m³", status: "UNKNOWN", connected: false },
+        },
+        cameraSnapshot: "/placeholder-camera.jpg",
+      };
+    }
   };
 
   const generatePDF = async (log: EventLog) => {
@@ -270,16 +471,30 @@ export default function EventLogs() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header onLogout={() => router.push("/")} onSettings={() => router.push("/settings")} />
-      
-      <div className="flex">
-        <Sidebar />
-        
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-          <div className="max-w-7xl mx-auto space-y-6">
+    <PageLayout>
+      <div className="max-w-7xl mx-auto space-y-6">
             <h2 className="text-2xl font-bold text-foreground">All Event Logs</h2>
 
+            {loading && (
+              <div className="flex items-center justify-center py-12">
+                <p className="text-muted-foreground">Loading event logs...</p>
+              </div>
+            )}
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                <p className="text-red-600">{error}</p>
+                <button 
+                  onClick={loadEventLogs}
+                  className="mt-2 text-sm text-red-700 underline hover:no-underline"
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+
+            {!loading && !error && (
+              <>
             <div className="flex flex-col gap-4">
               {/* Search and Action Row */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -363,25 +578,25 @@ export default function EventLogs() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-center">Timestamp</TableHead>
-                    <TableHead className="text-center">Location</TableHead>
-                    <TableHead className="text-center">Event Type</TableHead>
-                    <TableHead className="text-center">Event ID</TableHead>
-                    <TableHead className="text-center">Actions</TableHead>
+                    <TableHead className="text-center whitespace-nowrap">Timestamp</TableHead>
+                    <TableHead className="text-center whitespace-nowrap">Location</TableHead>
+                    <TableHead className="text-center whitespace-nowrap">Event Type</TableHead>
+                    <TableHead className="text-center whitespace-nowrap">Event ID</TableHead>
+                    <TableHead className="text-center whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredLogs.map((log) => (
                     <TableRow key={log.id}>
-                      <TableCell className="font-medium text-center">{log.timestamp}</TableCell>
-                      <TableCell className="text-center">{log.location}</TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="font-medium text-center whitespace-nowrap">{log.timestamp}</TableCell>
+                      <TableCell className="text-center whitespace-nowrap">{log.location}</TableCell>
+                      <TableCell className="text-center whitespace-nowrap">
                         <div className="flex justify-center">
                           <StatusBadge status={log.eventType} />
                         </div>
                       </TableCell>
-                      <TableCell className="font-mono text-sm text-center">{log.eventId}</TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="font-mono text-sm text-center whitespace-nowrap">{log.eventId}</TableCell>
+                      <TableCell className="text-center whitespace-nowrap">
                         <div className="flex justify-center gap-2">
                           <Button 
                             variant="ghost" 
@@ -405,37 +620,15 @@ export default function EventLogs() {
                   ))}
                 </TableBody>
               </Table>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                Showing {filteredLogs.length} of {mockLogs.length} entries
-              </p>
-              
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                
-                <span className="text-sm font-medium px-4">Page {currentPage}</span>
-                
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  onClick={() => setCurrentPage(p => p + 1)}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+            </div>            <PaginationControls
+              currentPage={currentPage}
+              totalItems={logs.length}
+              filteredItems={filteredLogs.length}
+              onPageChange={setCurrentPage}
+            />
+            </>
+            )}
           </div>
-        </main>
-      </div>
-    </div>
+    </PageLayout>
   );
 }

@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { User, Lock, Eye, EyeOff, Check, X } from "lucide-react";
+import { loginUser } from "@/services/supabaseService";
+import { useAuth } from "@/app/providers";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -29,6 +31,7 @@ export default function Login() {
   const [viewportOffset, setViewportOffset] = useState(0);
   const router = useRouter();
   const { toast } = useToast();
+  const { refreshUser } = useAuth();
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Keyboard detection for mobile with iOS viewport offset tracking
@@ -94,15 +97,29 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
 
-    // TODO: Implement actual authentication
-    setTimeout(() => {
+    try {
+      // Authenticate with Supabase
+      const user = await loginUser(email, password);
+      
+      // Refresh user in context
+      refreshUser();
+      
       toast({
         title: "Login Successful",
-        description: "Welcome to Pyrolert!",
+        description: `Welcome back, ${user.firstName}!`,
       });
+      
+      // Redirect to dashboard
       router.push("/dashboard");
+    } catch (error) {
+      console.error('Login error:', error);
+      toast({
+        title: "Login Failed",
+        description: error instanceof Error ? error.message : "Invalid email or password",
+        variant: "destructive",
+      });
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const handleForgotPasswordClick = () => {

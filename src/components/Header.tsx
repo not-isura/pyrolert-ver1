@@ -5,7 +5,8 @@ import Image from "next/image";
 import { LogOut, Settings, Menu, X, Home, Database, FileText } from "lucide-react";
 import { Button } from "./ui/button";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/app/providers";
 
 interface HeaderProps {
   userName?: string;
@@ -13,9 +14,11 @@ interface HeaderProps {
   onSettings?: () => void;
 }
 
-export const Header = ({ userName = "User", onLogout, onSettings }: HeaderProps) => {
+export const Header = ({ onSettings }: HeaderProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
   const scrollPosition = useRef(0);
   
   const now = new Date();
@@ -26,6 +29,11 @@ export const Header = ({ userName = "User", onLogout, onSettings }: HeaderProps)
     month: 'long', 
     day: 'numeric' 
   });
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/');
+  };
 
   const navItems = [
     { title: "Dashboard", icon: Home, path: "/dashboard" },
@@ -119,12 +127,16 @@ export const Header = ({ userName = "User", onLogout, onSettings }: HeaderProps)
 
   const handleSettingsClick = () => {
     closeMobileMenu();
-    onSettings?.();
+    if (onSettings) {
+      onSettings();
+    } else {
+      router.push('/settings');
+    }
   };
 
   const handleLogoutClick = () => {
     closeMobileMenu();
-    onLogout?.();
+    handleLogout();
   };
 
   return (
@@ -165,7 +177,7 @@ export const Header = ({ userName = "User", onLogout, onSettings }: HeaderProps)
 
           <div className="flex items-center gap-6">
             <div className="text-right">
-              <p className="text-sm font-medium">Hi, {userName}!</p>
+              <p className="text-sm font-medium">Hi, {user ? `${user.firstName} ${user.lastName}` : 'User'}!</p>
               <p className="text-xs opacity-80">{timeString} • {dateString}</p>
             </div>
             
@@ -174,7 +186,7 @@ export const Header = ({ userName = "User", onLogout, onSettings }: HeaderProps)
                 variant="ghost" 
                 size="icon"
                 className="text-primary-foreground hover:bg-accent hover:text-primary"
-                onClick={onSettings}
+                onClick={handleSettingsClick}
               >
                 <Settings className="h-5 w-5" />
               </Button>
@@ -182,7 +194,7 @@ export const Header = ({ userName = "User", onLogout, onSettings }: HeaderProps)
                 variant="ghost" 
                 size="icon"
                 className="text-primary-foreground hover:bg-accent hover:text-primary"
-                onClick={onLogout}
+                onClick={handleLogout}
               >
                 <LogOut className="h-5 w-5" />
               </Button>
@@ -261,7 +273,7 @@ export const Header = ({ userName = "User", onLogout, onSettings }: HeaderProps)
 
               {/* User Info */}
               <div className="text-center space-y-1 pb-6 border-b border-white/10">
-                <p className="text-lg font-semibold text-white">Hi, {userName}!</p>
+                <p className="text-lg font-semibold text-white">Hi, {user ? `${user.firstName} ${user.lastName}` : 'User'}!</p>
                 <p className="text-sm text-white/80">{timeString}</p>
                 <p className="text-sm text-white/80">{dateString}</p>
               </div>

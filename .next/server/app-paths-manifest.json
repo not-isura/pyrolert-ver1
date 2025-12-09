@@ -1,5 +1,7 @@
 {
-  "/page": "app/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/room-data/page": "app/room-data/page.js"
+  "/settings/page": "app/settings/page.js",
+  "/settings/create-account/page": "app/settings/create-account/page.js",
+  "/settings/users/page": "app/settings/users/page.js",
+  "/settings/rooms/page": "app/settings/rooms/page.js",
+  "/event-logs/page": "app/event-logs/page.js"
 }

@@ -2,29 +2,137 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Header } from "@/components/Header";
-import { Sidebar } from "@/components/Sidebar";
+import PageLayout from "@/components/PageLayout";
+import { SensorStatusBadge, SensorStatusType } from "@/components/SensorStatusBadge";
+import { ConnectionStatusBadge } from "@/components/ConnectionStatusBadge";
+import TrendBadge from "@/components/TrendBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Pause, RotateCcw, AlertTriangle, Download, ChevronLeft, ChevronRight, TriangleAlert, TrendingUp, TrendingDown, Minus, X } from "lucide-react";
+import { Users, Pause, RotateCcw, AlertTriangle, Download, ChevronLeft, ChevronRight, TriangleAlert, X } from "lucide-react";
+import { 
+  getRooms, 
+  getRoomById, 
+  getSensorsByRoom, 
+  getCameraSnapshotsByRoom,
+  type Room, 
+  type Sensor 
+} from "@/services/supabaseService";
 
 export default function RoomData() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const roomId = searchParams.get("id") || "1";
+  const roomId = searchParams.get("id");
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [selectedRoom, setSelectedRoom] = useState("1");
-  const [timestamp, setTimestamp] = useState("11/8/2025, 10:30:00 AM");
+  const [selectedRoom, setSelectedRoom] = useState(roomId || "");
+  const [timestamp, setTimestamp] = useState("Loading...");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
+  
+  // Supabase state
+  const [rooms, setRooms] = useState<Array<{ id: string; name: string }>>([]);
+  const [roomData, setRoomData] = useState<any>(null);
+  const [sensors, setSensors] = useState<Sensor[]>([]);
+  const [cameraImages, setCameraImages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Update timestamp on client side only
+  // Load rooms list on mount
   useEffect(() => {
-    setTimestamp(new Date().toLocaleString());
-    
-    // Optional: Update timestamp every minute
+    loadRooms();
+  }, []);
+
+  // Load room data when selected room changes
+  useEffect(() => {
+    if (selectedRoom) {
+      loadRoomData(selectedRoom);
+    }
+  }, [selectedRoom]);
+
+  // Update room ID from URL params or set first room as default
+  useEffect(() => {
+    if (roomId && roomId !== selectedRoom) {
+      setSelectedRoom(roomId);
+    } else if (!roomId && rooms.length > 0 && !selectedRoom) {
+      // If no room ID in URL, select the first room
+      setSelectedRoom(rooms[0].id);
+      router.push(`/room-data?id=${rooms[0].id}`);
+    }
+  }, [roomId, rooms]);
+
+  const loadRooms = async () => {
+    try {
+      console.log('Loading rooms list...');
+      const roomsData = await getRooms();
+      console.log('Rooms loaded:', roomsData);
+      
+      const roomsList = roomsData.map(room => ({
+        id: room.id,
+        name: room.name
+      }));
+      setRooms(roomsList);
+      console.log('Rooms list set:', roomsList);
+    } catch (err) {
+      console.error('Error loading rooms:', err);
+    }
+  };
+
+  const loadRoomData = async (roomIdToLoad: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('Loading room data for ID:', roomIdToLoad);
+      console.log('Available rooms:', rooms.map(r => r.id).join(', '));
+      
+      // Fetch room details
+      const room = await getRoomById(roomIdToLoad);
+      console.log('Room data:', room);
+      
+      if (!room) {
+        const availableRooms = rooms.length > 0 
+          ? `Available rooms: ${rooms.map(r => `${r.name} (${r.id})`).join(', ')}`
+          : 'No rooms available. Please check your database.';
+        setError(`Room "${roomIdToLoad}" not found. ${availableRooms}`);
+        setLoading(false);
+        return;
+      }
+      
+      // Fetch sensors for the room
+      const sensorsData = await getSensorsByRoom(roomIdToLoad);
+      console.log('Sensors data:', sensorsData);
+      
+      // Fetch camera snapshots
+      const snapshots = await getCameraSnapshotsByRoom(roomIdToLoad);
+      console.log('Camera snapshots:', snapshots);
+      
+      // Update timestamp
+      const now = new Date().toLocaleString();
+      setTimestamp(now);
+      
+      setRoomData(room);
+      setSensors(sensorsData);
+      setCameraImages(snapshots.map((snap, index) => ({
+        id: snap.id,
+        label: `Snapshot ${index + 1}`,
+        url: snap.image_url,
+        captured_at: snap.captured_at
+      })));
+      
+    } catch (err) {
+      console.error('Error loading room data:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      const errorDetails = JSON.stringify(err, null, 2);
+      console.log('Error details:', errorDetails);
+      setError(`Failed to load room data: ${errorMessage}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update timestamp periodically
+  useEffect(() => {
     const interval = setInterval(() => {
       setTimestamp(new Date().toLocaleString());
     }, 60000); // Update every 60 seconds
@@ -80,38 +188,6 @@ export default function RoomData() {
       };
     }
   }, [isFullscreen]);
-
-  // Mock rooms list
-  const rooms = [
-    { id: "1", name: "Conference Room A" },
-    { id: "2", name: "Conference Room B" },
-    { id: "3", name: "Laboratory 101" },
-    { id: "4", name: "Office Space 1" },
-  ];
-
-  // Mock data
-  const roomData = {
-    name: rooms.find(r => r.id === selectedRoom)?.name || "Conference Room A",
-    status: "normal" as "normal" | "warning" | "alert",
-    occupants: 12,
-    occupantChange: 2, // Change in last 30 min (positive = increase, negative = decrease, 0 = no change)
-    lastOccupantUpdate: "2 minutes ago",
-    temperature: { value: 22, connected: true },
-    co: { value: 5, connected: true },
-    no2: { value: 12, connected: true },
-    o2: { value: 20.9, connected: false },
-    pm25: { value: 8, connected: true },
-    pm10: { value: 15, connected: true },
-    timestamp: timestamp,
-  };
-
-  // Camera snapshots
-  const cameraImages = [
-    { id: 1, label: "Snapshot 1" },
-    { id: 2, label: "Snapshot 2" },
-    { id: 3, label: "Snapshot 3" },
-    { id: 4, label: "Snapshot 4" },
-  ];
 
   const handlePrevImage = () => {
     setCurrentImageIndex((prev) => (prev === 0 ? cameraImages.length - 1 : prev - 1));
@@ -191,70 +267,96 @@ export default function RoomData() {
     alert: { color: "#9C0006", bg: "#FFE5E5", label: "High Alert" }
   };
 
-  const currentStatusConfig = statusConfig[roomData.status];
+  const currentStatusConfig = statusConfig[roomData?.status || 'normal'];
 
-  // Sensor data array with status
-  const sensors = [
+  // Helper function to get sensor by type
+  const getSensor = (type: string) => {
+    return sensors.find(s => s.type === type);
+  };
+
+  // Transform sensor data for display
+  const sensorDisplayData = [
     { 
       name: "Temperature", 
-      value: `${roomData.temperature.value}°C`, 
-      connected: roomData.temperature.connected,
-      status: "normal" as "normal" | "warning" | "critical",
-      statusLabel: "Normal"
+      value: `${getSensor('temperature')?.value || 0}°C`, 
+      connected: getSensor('temperature')?.connected || false,
+      status: (getSensor('temperature')?.status || 'normal') as SensorStatusType,
+      statusLabel: getSensor('temperature')?.status === 'normal' ? 'Normal' : 
+                   getSensor('temperature')?.status === 'warning' ? 'Warning' : 'Critical'
     },
     { 
       name: "CO Level", 
-      value: `${roomData.co.value} ppm`, 
-      connected: roomData.co.connected,
-      status: "normal" as "normal" | "warning" | "critical",
-      statusLabel: "Normal"
+      value: `${getSensor('co')?.value || 0} ppm`, 
+      connected: getSensor('co')?.connected || false,
+      status: (getSensor('co')?.status || 'normal') as SensorStatusType,
+      statusLabel: getSensor('co')?.status === 'normal' ? 'Normal' : 
+                   getSensor('co')?.status === 'warning' ? 'Warning' : 'Critical'
     },
     { 
       name: "NO₂ Level", 
-      value: `${roomData.no2.value} ppb`, 
-      connected: roomData.no2.connected,
-      status: "normal" as "normal" | "warning" | "critical",
-      statusLabel: "Normal"
+      value: `${getSensor('no2')?.value || 0} ppb`, 
+      connected: getSensor('no2')?.connected || false,
+      status: (getSensor('no2')?.status || 'normal') as SensorStatusType,
+      statusLabel: getSensor('no2')?.status === 'normal' ? 'Normal' : 
+                   getSensor('no2')?.status === 'warning' ? 'Warning' : 'Critical'
     },
     { 
       name: "O₂ Level", 
-      value: `${roomData.o2.value}%`, 
-      connected: roomData.o2.connected,
-      status: "warning" as "normal" | "warning" | "critical",
-      statusLabel: "Warning"
+      value: `${getSensor('o2')?.value || 0}%`, 
+      connected: getSensor('o2')?.connected || false,
+      status: (getSensor('o2')?.status || 'normal') as SensorStatusType,
+      statusLabel: getSensor('o2')?.status === 'normal' ? 'Normal' : 
+                   getSensor('o2')?.status === 'warning' ? 'Warning' : 'Critical'
     },
     { 
       name: "PM2.5 Level", 
-      value: `${roomData.pm25.value} μg/m³`, 
-      connected: roomData.pm25.connected,
-      status: "normal" as "normal" | "warning" | "critical",
-      statusLabel: "Normal"
+      value: `${getSensor('pm25')?.value || 0} μg/m³`, 
+      connected: getSensor('pm25')?.connected || false,
+      status: (getSensor('pm25')?.status || 'normal') as SensorStatusType,
+      statusLabel: getSensor('pm25')?.status === 'normal' ? 'Normal' : 
+                   getSensor('pm25')?.status === 'warning' ? 'Warning' : 'Critical'
     },
     { 
       name: "PM10 Level", 
-      value: `${roomData.pm10.value} μg/m³`, 
-      connected: roomData.pm10.connected,
-      status: "normal" as "normal" | "warning" | "critical",
-      statusLabel: "Normal"
+      value: `${getSensor('pm10')?.value || 0} μg/m³`, 
+      connected: getSensor('pm10')?.connected || false,
+      status: (getSensor('pm10')?.status || 'normal') as SensorStatusType,
+      statusLabel: getSensor('pm10')?.status === 'normal' ? 'Normal' : 
+                   getSensor('pm10')?.status === 'warning' ? 'Warning' : 'Critical'
     },
   ];
 
-  // Sensor status color configurations
-  const sensorStatusConfig = {
-    normal: { bg: "#D5F5DA", color: "#006D33", label: "NORMAL" },
-    warning: { bg: "#FFF4E5", color: "#9E6024", label: "WARNING" },
-    critical: { bg: "#FFE5E5", color: "#9C0006", label: "CRITICAL" }
-  };
+  // Show loading state
+  if (loading) {
+    return (
+      <PageLayout>
+        <div className="flex items-center justify-center py-12">
+          <p className="text-muted-foreground">Loading room data...</p>
+        </div>
+      </PageLayout>
+    );
+  }
+
+  // Show error state
+  if (error || !roomData) {
+    return (
+      <PageLayout>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-600">{error || 'Room not found'}</p>
+          <button 
+            onClick={() => loadRoomData(selectedRoom)}
+            className="mt-2 text-sm text-red-700 underline hover:no-underline"
+          >
+            Try again
+          </button>
+        </div>
+      </PageLayout>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header onLogout={() => router.push("/")} onSettings={() => router.push("/settings")} />
-      
-      <div className="flex">
-        <Sidebar />
-        
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-          <div className="max-w-[1920px] mx-auto">
+    <PageLayout>
+      <div className="max-w-[1920px] mx-auto space-y-6">
             
             {/* Room Selector Dropdown */}
             <div className="mb-4 sm:mb-6">
@@ -270,7 +372,7 @@ export default function RoomData() {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs sm:text-sm text-muted-foreground mt-2">Last updated: {roomData.timestamp}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-2">Last updated: {timestamp}</p>
             </div>
 
             {/* Main Layout: Sensor Grid + Right Sidebar */}
@@ -349,7 +451,7 @@ export default function RoomData() {
                     
                     {/* Status Description */}
                     <p className="text-sm text-center text-[#4B5563] leading-relaxed">
-                      As of <span className="font-semibold">{roomData.timestamp}</span>, the <span className="font-semibold">{roomData.name}</span>'s condition is in{" "}
+                      As of <span className="font-semibold">{timestamp}</span>, the <span className="font-semibold">{roomData.name}</span>'s condition is in{" "}
                       <span className="font-bold" style={{ color: currentStatusConfig.color }}>
                         {currentStatusConfig.label}
                       </span>{" "}
@@ -373,33 +475,7 @@ export default function RoomData() {
                       </div>
                       
                       {/* Trend Indicator */}
-                      {roomData.occupantChange !== 0 && (
-                        <div className={`flex items-center gap-1 px-3 py-1.5 rounded-full ${
-                          roomData.occupantChange > 0 
-                            ? 'bg-green-100' 
-                            : 'bg-red-100'
-                        }`}>
-                          {roomData.occupantChange > 0 ? (
-                            <TrendingUp className={`h-5 w-5 ${
-                              roomData.occupantChange > 0 ? 'text-green-600' : 'text-red-600'
-                            }`} />
-                          ) : (
-                            <TrendingDown className="h-5 w-5 text-red-600" />
-                          )}
-                          <span className={`text-lg font-bold ${
-                            roomData.occupantChange > 0 ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {roomData.occupantChange > 0 ? '+' : ''}{roomData.occupantChange}
-                          </span>
-                        </div>
-                      )}
-                      
-                      {roomData.occupantChange === 0 && (
-                        <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-100">
-                          <Minus className="h-5 w-5 text-gray-600" />
-                          <span className="text-lg font-bold text-gray-600">0</span>
-                        </div>
-                      )}
+                      <TrendBadge value={roomData.occupant_change || 0} />
                     </div>
                     
                     {/* Context Information */}
@@ -408,7 +484,7 @@ export default function RoomData() {
                         vs. 30 minutes ago
                       </p>
                       <p className="text-xs text-[#9CA3AF]">
-                        Last updated: {roomData.lastOccupantUpdate}
+                        Last updated: {timestamp}
                       </p>
                     </div>
                   </CardContent>
@@ -445,8 +521,7 @@ export default function RoomData() {
                 {/* Sensor Cards in 3x2 Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                   
-                  {sensors.map((sensor, index) => {
-                    const statusColors = sensorStatusConfig[sensor.status];
+                  {sensorDisplayData.map((sensor, index) => {
                     return (
                       <Card key={index}>
                         <CardContent className="p-4 space-y-3">
@@ -455,26 +530,7 @@ export default function RoomData() {
                             <h3 className="text-sm sm:text-base font-semibold text-[#002147]">
                               {sensor.name}
                             </h3>
-                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-[#002147]"
-                              style={{
-                                backgroundColor: sensor.connected ? '#002147' : 'transparent',
-                              }}
-                            >
-                              <div 
-                                className="w-1.5 h-1.5 rounded-full"
-                                style={{
-                                  backgroundColor: sensor.connected ? '#FFFFFF' : '#002147'
-                                }}
-                              />
-                              <span 
-                                className="text-xs font-medium"
-                                style={{
-                                  color: sensor.connected ? '#FFFFFF' : '#002147'
-                                }}
-                              >
-                                {sensor.connected ? 'Connected' : 'Disconnected'}
-                              </span>
-                            </div>
+                            <ConnectionStatusBadge connected={sensor.connected} />
                           </div>
                           
                           {/* Large Centered Value */}
@@ -486,21 +542,7 @@ export default function RoomData() {
                           
                           {/* Status Badge */}
                           <div className="flex justify-center">
-                            <div 
-                              className="px-3 py-0.5 rounded-full"
-                              style={{
-                                backgroundColor: statusColors.bg,
-                              }}
-                            >
-                              <span 
-                                className="text-[10px] font-bold"
-                                style={{
-                                  color: statusColors.color
-                                }}
-                              >
-                                {statusColors.label}
-                              </span>
-                            </div>
+                            <SensorStatusBadge status={sensor.status} />
                           </div>
                         </CardContent>
                       </Card>
@@ -524,33 +566,7 @@ export default function RoomData() {
                       </div>
                       
                       {/* Trend Indicator */}
-                      {roomData.occupantChange !== 0 && (
-                        <div className={`flex items-center gap-1 px-3 py-1.5 rounded-full ${
-                          roomData.occupantChange > 0 
-                            ? 'bg-green-100' 
-                            : 'bg-red-100'
-                        }`}>
-                          {roomData.occupantChange > 0 ? (
-                            <TrendingUp className={`h-5 w-5 ${
-                              roomData.occupantChange > 0 ? 'text-green-600' : 'text-red-600'
-                            }`} />
-                          ) : (
-                            <TrendingDown className="h-5 w-5 text-red-600" />
-                          )}
-                          <span className={`text-lg font-bold ${
-                            roomData.occupantChange > 0 ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {roomData.occupantChange > 0 ? '+' : ''}{roomData.occupantChange}
-                          </span>
-                        </div>
-                      )}
-                      
-                      {roomData.occupantChange === 0 && (
-                        <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-100">
-                          <Minus className="h-5 w-5 text-gray-600" />
-                          <span className="text-lg font-bold text-gray-600">0</span>
-                        </div>
-                      )}
+                      <TrendBadge value={roomData.occupant_change || 0} />
                     </div>
                     
                     {/* Context Information */}
@@ -559,7 +575,7 @@ export default function RoomData() {
                         vs. 30 minutes ago
                       </p>
                       <p className="text-xs text-[#9CA3AF]">
-                        Last updated: {roomData.lastOccupantUpdate}
+                        Last updated: {timestamp}
                       </p>
                     </div>
                   </CardContent>
@@ -581,11 +597,14 @@ export default function RoomData() {
                       {/* Main Image Display */}
                       <div className="aspect-video bg-muted rounded-lg flex items-center justify-center hover:bg-muted/80 transition-colors">
                         <p className="text-sm text-muted-foreground">
-                          {cameraImages[currentImageIndex].label}
+                          {cameraImages.length > 0 && cameraImages[currentImageIndex] 
+                            ? cameraImages[currentImageIndex].label 
+                            : 'No camera snapshots available'}
                         </p>
                       </div>
                       
                       {/* Left Arrow */}
+                      {cameraImages.length > 1 && (
                       <Button
                         variant="outline"
                         size="icon"
@@ -597,8 +616,10 @@ export default function RoomData() {
                       >
                         <ChevronLeft className="h-6 w-6" />
                       </Button>
+                      )}
                       
                       {/* Right Arrow */}
+                      {cameraImages.length > 1 && (
                       <Button
                         variant="outline"
                         size="icon"
@@ -610,8 +631,10 @@ export default function RoomData() {
                       >
                         <ChevronRight className="h-6 w-6" />
                       </Button>
+                      )}
                       
                       {/* Indicator Dots */}
+                      {cameraImages.length > 1 && (
                       <div className="flex justify-center gap-2 mt-4">
                         {cameraImages.map((_, index) => (
                           <button
@@ -627,13 +650,12 @@ export default function RoomData() {
                           />
                         ))}
                       </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
               </div>
             </div>
-          </div>
-        </main>
       </div>
 
       {/* Fullscreen Camera Modal - Outside main content */}
@@ -721,6 +743,6 @@ export default function RoomData() {
           </div>
         </div>
       )}
-    </div>
+    </PageLayout>
   );
 }

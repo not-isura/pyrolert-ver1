@@ -14,7 +14,157 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      users: {
+        Row: {
+          id: string
+          first_name: string
+          last_name: string
+          email: string
+          password: string
+          role: 'security' | 'admin' | 'dean' | 'facility'
+          status: 'active' | 'inactive'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          first_name: string
+          last_name: string
+          email: string
+          password: string
+          role: 'security' | 'admin' | 'dean' | 'facility'
+          status?: 'active' | 'inactive'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          first_name?: string
+          last_name?: string
+          email?: string
+          password?: string
+          role?: 'security' | 'admin' | 'dean' | 'facility'
+          status?: 'active' | 'inactive'
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      rooms: {
+        Row: {
+          id: string
+          name: string
+          status: 'normal' | 'warning' | 'alert' | 'error'
+          last_updated: string
+          occupants: number
+          occupant_change: number
+          created_at: string
+        }
+        Insert: {
+          id: string
+          name: string
+          status: 'normal' | 'warning' | 'alert' | 'error'
+          last_updated?: string
+          occupants?: number
+          occupant_change?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          status?: 'normal' | 'warning' | 'alert' | 'error'
+          last_updated?: string
+          occupants?: number
+          occupant_change?: number
+          created_at?: string
+        }
+      }
+      sensors: {
+        Row: {
+          id: string
+          room_id: string
+          name: string
+          type: 'temperature' | 'co' | 'no2' | 'o2' | 'pm25' | 'pm10'
+          value: number
+          unit: string
+          status: 'normal' | 'warning' | 'critical'
+          connected: boolean
+          last_reading: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          room_id: string
+          name: string
+          type: 'temperature' | 'co' | 'no2' | 'o2' | 'pm25' | 'pm10'
+          value: number
+          unit: string
+          status: 'normal' | 'warning' | 'critical'
+          connected?: boolean
+          last_reading?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          room_id?: string
+          name?: string
+          type?: 'temperature' | 'co' | 'no2' | 'o2' | 'pm25' | 'pm10'
+          value?: number
+          unit?: string
+          status?: 'normal' | 'warning' | 'critical'
+          connected?: boolean
+          last_reading?: string
+          created_at?: string
+        }
+      }
+      event_logs: {
+        Row: {
+          id: string
+          timestamp: string
+          location: string
+          event_type: 'normal' | 'warning' | 'alert' | 'error'
+          room_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id: string
+          timestamp?: string
+          location: string
+          event_type: 'normal' | 'warning' | 'alert' | 'error'
+          room_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          timestamp?: string
+          location?: string
+          event_type?: 'normal' | 'warning' | 'alert' | 'error'
+          room_id?: string | null
+          created_at?: string
+        }
+      }
+      camera_snapshots: {
+        Row: {
+          id: string
+          room_id: string
+          image_url: string
+          captured_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          room_id: string
+          image_url: string
+          captured_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          room_id?: string
+          image_url?: string
+          captured_at?: string
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

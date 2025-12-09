@@ -1,5 +1,10 @@
 import Dashboard from "@/pages/Dashboard";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 export default function DashboardPage() {
-  return <Dashboard />;
+  return (
+    <ProtectedRoute allowedRoles={['admin', 'security', 'dean', 'facility', 'director']}>
+      <Dashboard />
+    </ProtectedRoute>
+  );
 }

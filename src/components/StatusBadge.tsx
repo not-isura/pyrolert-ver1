@@ -32,7 +32,7 @@ export const StatusBadge = ({ status, className }: StatusBadgeProps) => {
   return (
     <span
       className={cn(
-        "px-4 py-1 rounded-full text-sm font-medium inline-flex items-center justify-center w-[90px] whitespace-nowrap",
+        "px-4 py-1 rounded-full text-sm font-bold inline-flex items-center justify-center w-[90px] whitespace-nowrap",
         config.className,
         className
       )}
