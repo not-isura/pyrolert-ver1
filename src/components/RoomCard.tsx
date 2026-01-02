@@ -59,29 +59,29 @@ export const RoomCard = ({
       {/* Card Content */}
       <div className="p-4 sm:p-5 pt-5 sm:pt-6 flex flex-col gap-2">
         {/* Room Name */}
-        <h3 className="text-lg sm:text-[20px] font-bold text-[#002147] truncate">
+        <h3 className="text-lg sm:text-[20px] font-bold text-brand-blue truncate">
           {roomName}
         </h3>
 
         {/* Status Row */}
         <div className="flex items-center gap-2 flex-wrap">
-          <Activity className="h-4 w-4 text-[#002147] flex-shrink-0" />
-          <span className="text-xs sm:text-[14px] font-semibold text-[#002147]">Status:</span>
+          <Activity className="h-4 w-4 text-brand-blue flex-shrink-0" />
+          <span className="text-xs sm:text-[14px] font-semibold text-brand-blue">Status:</span>
           <StatusBadge status={status} />
         </div>
 
         {/* Occupants Row */}
         <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-[#002147] flex-shrink-0" />
-          <span className="text-xs sm:text-[14px] font-semibold text-[#002147]">Occupants:</span>
-          <span className="text-sm sm:text-[16px] font-medium text-[#4B5563]">{occupants}</span>
+          <Users className="h-4 w-4 text-brand-blue flex-shrink-0" />
+          <span className="text-xs sm:text-[14px] font-semibold text-brand-blue">Occupants:</span>
+          <span className="text-xs sm:text-[14px] font-medium">{occupants}</span>
         </div>
 
-        {/* Temperature Row */}
+        {/* Temperature */}
         <div className="flex items-center gap-2">
-          <Thermometer className="h-4 w-4 text-[#002147]" />
-          <span className="text-xs sm:text-[14px] font-semibold text-[#002147]">Temperature:</span>
-          <span className="text-sm sm:text-[16px] font-medium text-[#4B5563]">{temperature}°C</span>
+          <Thermometer className="h-4 w-4 text-brand-blue" />
+          <span className="text-xs sm:text-[14px] font-semibold text-brand-blue">Temperature:</span>
+          <span className="text-sm sm:text-[16px] font-medium text-text-primary">{temperature}°C</span>
         </div>
 
         {/* Divider Line */}
@@ -89,7 +89,7 @@ export const RoomCard = ({
 
         {/* Active Sensors Section */}
         <div className="mt-1">
-          <h4 className="text-xs sm:text-[14px] font-semibold text-[#002147] mb-2">
+          <h4 className="text-xs sm:text-[14px] font-semibold text-brand-blue mb-2">
             Active Sensors
           </h4>
           
@@ -100,9 +100,9 @@ export const RoomCard = ({
                 key={sensor.key}
                 className="flex items-center justify-center px-2 py-2 sm:py-3 border rounded-lg text-xs sm:text-[14px] font-medium transition-all duration-200"
                 style={{
-                  backgroundColor: sensor.active ? '#002147' : 'transparent',
-                  borderColor: sensor.active ? '#002147' : '#CBD5E1',
-                  color: sensor.active ? '#FFFFFF' : '#002147'
+                  backgroundColor: sensor.active ? 'hsl(var(--brand-blue))' : 'transparent',
+                  borderColor: sensor.active ? 'hsl(var(--brand-blue))' : '#CBD5E1',
+                  color: sensor.active ? 'hsl(var(--primary-foreground))' : 'hsl(var(--brand-blue))'
                 }}
               >
                 {sensor.label}

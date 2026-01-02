@@ -388,7 +388,7 @@ export default function RoomManagement() {
           Back to Settings
         </Button>
 
-        <h2 className="text-2xl font-bold text-[#002147]">Room Management</h2>
+        <h2 className="text-2xl font-bold text-brand-blue">Room Management</h2>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="relative max-w-md w-full">
@@ -562,7 +562,7 @@ export default function RoomManagement() {
               <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-full bg-red-100">
                 <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
               </div>
-              <AlertDialogTitle className="text-lg sm:text-xl font-bold text-[#002147]">
+              <AlertDialogTitle className="text-lg sm:text-xl font-bold text-brand-blue">
                 Delete Room
               </AlertDialogTitle>
             </div>

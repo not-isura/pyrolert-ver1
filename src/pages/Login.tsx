@@ -272,14 +272,14 @@ export default function Login() {
 
         {/* Login Form */}
         <div className="space-y-6">
-          <h2 className="text-[18px] font-semibold text-[#D49C00] text-center">
+          <h2 className="text-[18px] font-semibold text-brand-yellow text-center">
             Log In to Your Account
           </h2>
 
           <form onSubmit={handleLogin} className="space-y-4">
             {/* Email/Username Input */}
             <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-icon-muted" />
               <Input
                 id="email"
                 type="text"
@@ -293,7 +293,7 @@ export default function Login() {
 
             {/* Password Input */}
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-icon-muted" />
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
@@ -306,7 +306,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-icon-muted hover:text-icon-secondary transition-colors"
               >
                 {showPassword ? (
                   <EyeOff className="h-4 w-4" />
@@ -321,7 +321,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={handleForgotPasswordClick}
-                className="text-[12px] text-[#002147] hover:underline transition-all"
+                className="text-[12px] text-brand-blue hover:underline transition-all"
               >
                 Forgot Password?
               </button>
@@ -331,7 +331,7 @@ export default function Login() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full h-12 bg-[#002147] hover:bg-[#003366] text-white font-semibold rounded-[25px] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full h-12 bg-brand-blue hover:bg-brand-blue/90 text-white font-semibold rounded-[25px] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             >
               {isLoading ? "Signing in..." : "Login"}
             </Button>
@@ -356,7 +356,7 @@ export default function Login() {
           }}
         >
           <DialogHeader>
-            <DialogTitle className="text-xl sm:text-2xl font-bold text-[#002147]">
+            <DialogTitle className="text-xl sm:text-2xl font-bold text-brand-blue">
               {forgotPasswordStep === 1 && "Forgot Password"}
               {forgotPasswordStep === 2 && "Verify OTP"}
               {forgotPasswordStep === 3 && "Create New Password"}
@@ -366,7 +366,7 @@ export default function Login() {
           {/* Step 1: Email Entry */}
           {forgotPasswordStep === 1 && (
             <div className="space-y-4 sm:space-y-6 py-2 sm:py-4">
-              <p className="text-xs sm:text-sm text-gray-600">
+              <p className="text-xs sm:text-sm text-text-secondary">
                 Enter your email address to reset your password.
               </p>
               
@@ -392,7 +392,7 @@ export default function Login() {
                 </Button>
                 <Button
                   onClick={handleEmailNext}
-                  className="flex-1 h-9 sm:h-11 text-sm bg-[#002147] hover:bg-[#003366]"
+                  className="flex-1 h-9 sm:h-11 text-sm bg-brand-blue hover:bg-brand-blue/90"
                 >
                   Next
                 </Button>
@@ -432,14 +432,14 @@ export default function Login() {
               {/* Timer and Resend */}
               <div className="text-center space-y-2">
                 {!canResendOtp ? (
-                  <p className="text-sm text-gray-500">
-                    Resend OTP in <span className="font-semibold text-[#002147]">{otpTimer}s</span>
+                  <p className="text-sm text-text-secondary">
+                    Resend OTP in <span className="font-semibold text-brand-blue">{otpTimer}s</span>
                   </p>
                 ) : (
                   <button
                     type="button"
                     onClick={handleResendOtp}
-                    className="text-sm text-[#002147] hover:underline font-semibold"
+                    className="text-sm text-brand-blue hover:underline font-semibold"
                   >
                     Resend OTP
                   </button>
@@ -457,7 +457,7 @@ export default function Login() {
                 <Button
                   onClick={handleVerifyOtp}
                   disabled={otpDigits.join("").length !== 6}
-                  className="flex-1 h-9 sm:h-11 text-sm bg-[#002147] hover:bg-[#003366] disabled:opacity-50"
+                  className="flex-1 h-9 sm:h-11 text-sm bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50"
                 >
                   Verify OTP
                 </Button>
@@ -487,7 +487,7 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-icon-muted hover:text-icon-secondary"
                   >
                     {showNewPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -513,7 +513,7 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-icon-muted hover:text-icon-secondary"
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -526,46 +526,46 @@ export default function Login() {
 
               {/* Password Validation Cues */}
               <div className="space-y-2 p-3 sm:p-4 bg-gray-50 rounded-lg">
-                <p className="text-xs sm:text-sm font-semibold text-gray-700 mb-1 sm:mb-2">Password Requirements:</p>
+                <p className="text-xs sm:text-sm font-semibold text-text-primary mb-1 sm:mb-2">Password Requirements:</p>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     {passwordValidation.length ? (
-                      <Check className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
+                      <Check className="h-3 w-3 sm:h-4 sm:w-4 text-success" />
                     ) : (
-                      <X className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
+                      <X className="h-3 w-3 sm:h-4 sm:w-4 text-error" />
                     )}
-                    <span className={`text-xs sm:text-sm ${passwordValidation.length ? "text-green-600" : "text-gray-600"}`}>
+                    <span className={`text-xs sm:text-sm ${passwordValidation.length ? "text-success" : "text-text-secondary"}`}>
                       8-16 characters
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     {passwordValidation.hasCapital ? (
-                      <Check className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
+                      <Check className="h-3 w-3 sm:h-4 sm:w-4 text-success" />
                     ) : (
-                      <X className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
+                      <X className="h-3 w-3 sm:h-4 sm:w-4 text-error" />
                     )}
-                    <span className={`text-xs sm:text-sm ${passwordValidation.hasCapital ? "text-green-600" : "text-gray-600"}`}>
+                    <span className={`text-xs sm:text-sm ${passwordValidation.hasCapital ? "text-success" : "text-text-secondary"}`}>
                       At least one capital letter
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     {passwordValidation.hasSpecial ? (
-                      <Check className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
+                      <Check className="h-3 w-3 sm:h-4 sm:w-4 text-success" />
                     ) : (
-                      <X className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
+                      <X className="h-3 w-3 sm:h-4 sm:w-4 text-error" />
                     )}
-                    <span className={`text-xs sm:text-sm ${passwordValidation.hasSpecial ? "text-green-600" : "text-gray-600"}`}>
+                    <span className={`text-xs sm:text-sm ${passwordValidation.hasSpecial ? "text-success" : "text-text-secondary"}`}>
                       At least one special character
                     </span>
                   </div>
                   {confirmPassword && (
                     <div className="flex items-center gap-2">
                       {passwordsMatch ? (
-                        <Check className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
+                        <Check className="h-3 w-3 sm:h-4 sm:w-4 text-success" />
                       ) : (
-                        <X className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
+                        <X className="h-3 w-3 sm:h-4 sm:w-4 text-error" />
                       )}
-                      <span className={`text-xs sm:text-sm ${passwordsMatch ? "text-green-600" : "text-red-500"}`}>
+                      <span className={`text-xs sm:text-sm ${passwordsMatch ? "text-success" : "text-error"}`}>
                         Passwords match
                       </span>
                     </div>
@@ -584,7 +584,7 @@ export default function Login() {
                 <Button
                   onClick={handlePasswordReset}
                   disabled={!isPasswordValid || !passwordsMatch}
-                  className="flex-1 h-9 sm:h-11 text-sm bg-[#002147] hover:bg-[#003366] disabled:opacity-50"
+                  className="flex-1 h-9 sm:h-11 text-sm bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50"
                 >
                   Reset Password
                 </Button>

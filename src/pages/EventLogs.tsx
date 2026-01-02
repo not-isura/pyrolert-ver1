@@ -312,14 +312,14 @@ export default function EventLogs() {
       reportDiv.innerHTML = `
         <div style="max-width: 170mm;">
           <!-- Header -->
-          <div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid #002147; padding-bottom: 20px;">
-            <h1 style="color: #002147; margin: 0 0 10px 0; font-size: 28px;">PyroLert Event Report</h1>
+          <div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid hsl(var(--brand-blue)); padding-bottom: 20px;">
+            <h1 style="color: hsl(var(--brand-blue)); margin: 0 0 10px 0; font-size: 28px;">PyroLert Event Report</h1>
             <p style="color: #666; margin: 0; font-size: 14px;">Fire Detection & Monitoring System</p>
           </div>
 
           <!-- Event Details -->
           <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-            <h2 style="color: #002147; margin: 0 0 15px 0; font-size: 20px; border-bottom: 2px solid #002147; padding-bottom: 8px;">Event Details</h2>
+            <h2 style="color: hsl(var(--brand-blue)); margin: 0 0 15px 0; font-size: 20px; border-bottom: 2px solid hsl(var(--brand-blue)); padding-bottom: 8px;">Event Details</h2>
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
                 <td style="padding: 8px 0; width: 35%; font-weight: bold; color: #333;">Event ID:</td>
@@ -346,10 +346,10 @@ export default function EventLogs() {
 
           <!-- Sensor Readings -->
           <div style="margin-bottom: 25px;">
-            <h2 style="color: #002147; margin: 0 0 15px 0; font-size: 20px; border-bottom: 2px solid #002147; padding-bottom: 8px;">Sensor Readings</h2>
+            <h2 style="color: hsl(var(--brand-blue)); margin: 0 0 15px 0; font-size: 20px; border-bottom: 2px solid hsl(var(--brand-blue)); padding-bottom: 8px;">Sensor Readings</h2>
             <table style="width: 100%; border-collapse: collapse; border: 1px solid #ddd;">
               <thead>
-                <tr style="background: #002147; color: white;">
+                <tr style="background: hsl(var(--brand-blue)); color: white;">
                   <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Sensor</th>
                   <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">Value</th>
                   <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">Status</th>
@@ -371,7 +371,7 @@ export default function EventLogs() {
 
           <!-- Camera Snapshot Placeholder -->
           <div style="margin-bottom: 25px;">
-            <h2 style="color: #002147; margin: 0 0 15px 0; font-size: 20px; border-bottom: 2px solid #002147; padding-bottom: 8px;">Camera Snapshot</h2>
+            <h2 style="color: hsl(var(--brand-blue)); margin: 0 0 15px 0; font-size: 20px; border-bottom: 2px solid hsl(var(--brand-blue)); padding-bottom: 8px;">Camera Snapshot</h2>
             <div style="border: 2px dashed #ddd; padding: 40px; text-align: center; background: #f8f9fa; border-radius: 8px;">
               <p style="color: #999; margin: 0; font-size: 14px;">📷 Camera snapshot will be embedded here</p>
               <p style="color: #bbb; margin: 5px 0 0 0; font-size: 12px;">Image URL: ${roomData.cameraSnapshot}</p>

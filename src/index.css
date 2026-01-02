@@ -9,37 +9,37 @@ All colors MUST be HSL.
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 206 100% 16%;
+    --foreground: 0 0% 15%;         /* Dark gray/black for text on light backgrounds */
 
     --card: 0 0% 100%;
-    --card-foreground: 206 100% 16%;
+    --card-foreground: 0 0% 15%;    /* Dark gray/black for card text */
 
     --popover: 0 0% 100%;
-    --popover-foreground: 206 100% 16%;
+    --popover-foreground: 0 0% 15%;
 
-    --primary: 206 100% 16%;
+    --primary: 0 100% 25%;
     --primary-foreground: 60 33% 93%;
 
     --secondary: 221 19% 69%;
-    --secondary-foreground: 206 100% 16%;
+    --secondary-foreground: 0 0% 15%;
 
     --muted: 221 19% 69%;
-    --muted-foreground: 206 100% 16%;
+    --muted-foreground: 0 0% 40%;   /* Medium gray for secondary text */
 
     --accent: 45 79% 47%;
-    --accent-foreground: 206 100% 16%;
+    --accent-foreground: 0 0% 15%;
 
     --destructive: 356 100% 31%;
     --destructive-foreground: 60 33% 93%;
 
     --border: 221 19% 85%;
     --input: 221 19% 85%;
-    --ring: 206 100% 16%;
+    --ring: 0 100% 25%;
 
     --radius: 0.5rem;
 
     /* Pyrolert specific colors */
-    --navy: 206 100% 16%;
+    --navy: 0 100% 25%;
     --ivory: 60 33% 93%;
     --gold: 45 79% 47%;
     --beige: 44 100% 90%;
@@ -54,6 +54,45 @@ All colors MUST be HSL.
     --status-alert-text: 356 100% 31%;
     --status-error: 0 0% 85%;
     --status-error-text: 240 2% 30%;
+
+    /* Brand colors - centralized color definitions */
+    --brand-blue: 0 100% 25%;       /* #800000 (Maroon) */
+    --brand-yellow: 45 94% 64%;     /* #F1C94E */
+    --brand-green: 151 100% 42%;    /* #006D33 */
+    --brand-orange: 32 61% 38%;     /* #9E6024 */
+    --brand-red: 358 97% 32%;       /* #9C0006 */
+    
+    /* Semantic text colors for light backgrounds */
+    --text-primary: 0 0% 15%;       /* #262626 - Primary text (dark gray/black) */
+    --text-secondary: 0 0% 42%;     /* #6B7280 - Secondary text (medium gray) */
+    --text-tertiary: 0 0% 61%;      /* #9CA3AF - Tertiary text (light gray) */
+    --text-disabled: 0 0% 74%;      /* #BDBDBD - Disabled text */
+    --text-placeholder: 0 0% 62%;   /* #9CA3AF - Placeholder text */
+    
+    /* Semantic colors for states and feedback */
+    --error: 0 84% 60%;             /* #E53E3E - Error/danger */
+    --error-hover: 0 65% 51%;       /* #C53030 - Error hover state */
+    --error-light: 0 100% 97%;      /* #FFF5F5 - Error backgrounds */
+    
+    --success: 142 71% 45%;         /* #22C55E - Success/valid */
+    --success-hover: 142 76% 36%;   /* #16A34A - Success hover */
+    --success-light: 138 76% 97%;   /* #F0FDF4 - Success backgrounds */
+    
+    --warning: 38 92% 50%;          /* #F59E0B - Warning */
+    --warning-hover: 25 95% 53%;    /* #F97316 - Warning hover */
+    
+    --info: 199 89% 48%;            /* #0EA5E9 - Info */
+    
+    /* Semantic icon colors */
+    --icon-primary: 0 0% 15%;       /* Primary icons */
+    --icon-secondary: 0 0% 42%;     /* Secondary icons */
+    --icon-muted: 0 0% 62%;         /* Muted/disabled icons */
+    --icon-hover: 0 100% 25%;       /* Icon hover state (maroon) */
+    
+    /* Link colors */
+    --link: 0 100% 25%;             /* Link default (maroon) */
+    --link-hover: 0 100% 20%;       /* Link hover (darker maroon) */
+    --link-visited: 0 100% 30%;     /* Visited links */
   }
 }
 

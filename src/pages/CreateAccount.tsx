@@ -71,13 +71,13 @@ export default function CreateAccount() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl font-bold text-[#002147]">Create New Account</CardTitle>
+                <CardTitle className="text-2xl font-bold text-brand-blue">Create New Account</CardTitle>
               </CardHeader>
               <CardContent className="space-y-8">
                 
                 {/* Basic Information Section */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-[#002147] border-b border-[#F1C94E] pb-2">
+                  <h3 className="text-lg font-semibold text-brand-blue border-b border-brand-yellow pb-2">
                     Basic Information
                   </h3>
                   
@@ -170,7 +170,7 @@ export default function CreateAccount() {
 
                 {/* User Role Section */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-[#002147] border-b border-[#F1C94E] pb-2">
+                  <h3 className="text-lg font-semibold text-brand-blue border-b border-brand-yellow pb-2">
                     User Role
                   </h3>
                   
@@ -214,7 +214,7 @@ export default function CreateAccount() {
                   <Button 
                     onClick={handleRegister}
                     disabled={!allFieldsFilled}
-                    className="bg-[#002147] hover:bg-[#002147]/90"
+                    className="bg-brand-blue hover:bg-brand-blue/90"
                   >
                     Register Account
                   </Button>

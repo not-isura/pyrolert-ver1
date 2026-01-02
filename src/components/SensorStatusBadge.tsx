@@ -11,17 +11,17 @@ const sensorStatusConfig = {
   normal: {
     label: "NORMAL",
     bg: "#D5F5DA",
-    color: "#006D33",
+    color: "hsl(var(--brand-green))",
   },
   warning: {
     label: "WARNING",
     bg: "#FFF4E5",
-    color: "#9E6024",
+    color: "hsl(var(--brand-orange))",
   },
   critical: {
     label: "CRITICAL",
     bg: "#FFE5E5",
-    color: "#9C0006",
+    color: "hsl(var(--brand-red))",
   },
 };
 

@@ -214,7 +214,7 @@ export const Header = ({ onSettings }: HeaderProps) => {
                 href={item.path}
                 className={`flex items-center justify-center p-2 rounded-lg transition-colors ${
                   isActive
-                    ? "text-[#002147]"
+                    ? "text-brand-blue"
                     : "text-gray-300 hover:text-gray-400"
                 }`}
                 title={item.title}
@@ -242,7 +242,7 @@ export const Header = ({ onSettings }: HeaderProps) => {
           
           {/* Menu Panel - 3/4 Width from Right */}
           <div 
-            className="absolute right-0 top-0 bottom-0 w-3/4 bg-[#002147] flex flex-col shadow-2xl"
+            className="absolute right-0 top-0 bottom-0 w-3/4 bg-brand-blue flex flex-col shadow-2xl"
             data-menu-content="true"
             style={{
               overscrollBehavior: 'contain',
@@ -290,7 +290,7 @@ export const Header = ({ onSettings }: HeaderProps) => {
                 </Button>
                 <Button 
                   variant="outline" 
-                  className="w-full h-12 text-base font-semibold bg-[#FFFFF0] border-white/30 text-[#002147] hover:bg-white justify-start"
+                  className="w-full h-12 text-base font-semibold bg-[#FFFFF0] border-white/30 text-brand-blue hover:bg-white justify-start"
                   onClick={handleLogoutClick}
                 >
                   <LogOut className="h-5 w-5 mr-3" />

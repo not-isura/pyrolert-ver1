@@ -47,7 +47,7 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#002147] mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-blue mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
@@ -60,13 +60,13 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center max-w-md p-6">
           <div className="text-6xl mb-4">🚫</div>
-          <h1 className="text-2xl font-bold text-[#002147] mb-2">Access Denied</h1>
+          <h1 className="text-2xl font-bold text-brand-blue mb-2">Access Denied</h1>
           <p className="text-muted-foreground mb-4">
             You don't have permission to access this page.
           </p>
           <button
             onClick={() => router.push("/dashboard")}
-            className="text-[#002147] hover:underline"
+            className="text-brand-blue hover:underline"
           >
             Return to Dashboard
           </button>

@@ -60,6 +60,53 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Brand color references
+        brand: {
+          blue: "hsl(var(--brand-blue))",
+          yellow: "hsl(var(--brand-yellow))",
+          green: "hsl(var(--brand-green))",
+          orange: "hsl(var(--brand-orange))",
+          red: "hsl(var(--brand-red))",
+        },
+        // Semantic text colors for light backgrounds
+        text: {
+          primary: "hsl(var(--text-primary))",
+          secondary: "hsl(var(--text-secondary))",
+          tertiary: "hsl(var(--text-tertiary))",
+          disabled: "hsl(var(--text-disabled))",
+          placeholder: "hsl(var(--text-placeholder))",
+        },
+        // Semantic state colors
+        error: {
+          DEFAULT: "hsl(var(--error))",
+          hover: "hsl(var(--error-hover))",
+          light: "hsl(var(--error-light))",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          hover: "hsl(var(--success-hover))",
+          light: "hsl(var(--success-light))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          hover: "hsl(var(--warning-hover))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+        },
+        // Semantic icon colors
+        icon: {
+          primary: "hsl(var(--icon-primary))",
+          secondary: "hsl(var(--icon-secondary))",
+          muted: "hsl(var(--icon-muted))",
+          hover: "hsl(var(--icon-hover))",
+        },
+        // Link colors
+        link: {
+          DEFAULT: "hsl(var(--link))",
+          hover: "hsl(var(--link-hover))",
+          visited: "hsl(var(--link-visited))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

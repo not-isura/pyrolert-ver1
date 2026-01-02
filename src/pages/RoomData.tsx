@@ -262,9 +262,9 @@ export default function RoomData() {
 
   // Status configurations
   const statusConfig = {
-    normal: { color: "#006D33", bg: "#D5F5DA", label: "Normal" },
-    warning: { color: "#9E6024", bg: "#FFF4E5", label: "Warning" },
-    alert: { color: "#9C0006", bg: "#FFE5E5", label: "High Alert" }
+    normal: { color: "hsl(var(--brand-green))", bg: "hsl(var(--status-normal))", label: "Normal" },
+    warning: { color: "hsl(var(--brand-orange))", bg: "hsl(var(--status-warning))", label: "Warning" },
+    alert: { color: "hsl(var(--brand-red))", bg: "hsl(var(--status-alert))", label: "High Alert" }
   };
 
   const currentStatusConfig = statusConfig[roomData?.status || 'normal'];
@@ -341,11 +341,11 @@ export default function RoomData() {
   if (error || !roomData) {
     return (
       <PageLayout>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-600">{error || 'Room not found'}</p>
+        <div className="bg-error-light border border-error rounded-lg p-4">
+          <p className="text-error">{error || 'Room not found'}</p>
           <button 
             onClick={() => loadRoomData(selectedRoom)}
-            className="mt-2 text-sm text-red-700 underline hover:no-underline"
+            className="mt-2 text-sm text-error-hover underline hover:no-underline"
           >
             Try again
           </button>
@@ -384,7 +384,7 @@ export default function RoomData() {
                 {/* Overall Status */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg font-bold text-[#002147]">Overall Status</CardTitle>
+                    <CardTitle className="text-lg font-bold text-brand-blue">Overall Status</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {/* Circular Status Ring */}
@@ -450,7 +450,7 @@ export default function RoomData() {
                     </div>
                     
                     {/* Status Description */}
-                    <p className="text-sm text-center text-[#4B5563] leading-relaxed">
+                    <p className="text-sm text-center text-text-primary leading-relaxed">
                       As of <span className="font-semibold">{timestamp}</span>, the <span className="font-semibold">{roomData.name}</span>'s condition is in{" "}
                       <span className="font-bold" style={{ color: currentStatusConfig.color }}>
                         {currentStatusConfig.label}
@@ -463,15 +463,15 @@ export default function RoomData() {
                 {/* Occupant Count - Hidden on mobile, shows in right sidebar on lg+ */}
                 <Card className="hidden lg:block">
                   <CardHeader>
-                    <CardTitle className="text-lg font-bold text-[#002147]">Occupants</CardTitle>
+                    <CardTitle className="text-lg font-bold text-brand-blue">Occupants</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {/* Main Count Display */}
                     <div className="flex items-center justify-center gap-4">
                       {/* Large Occupant Number */}
                       <div className="flex items-baseline gap-2">
-                        <Users className="h-8 w-8 text-[#002147]" />
-                        <span className="text-5xl font-bold text-[#002147]">{roomData.occupants}</span>
+                        <Users className="h-8 w-8 text-brand-blue" />
+                        <span className="text-5xl font-bold text-brand-blue">{roomData.occupants}</span>
                       </div>
                       
                       {/* Trend Indicator */}
@@ -480,10 +480,10 @@ export default function RoomData() {
                     
                     {/* Context Information */}
                     <div className="text-center space-y-1">
-                      <p className="text-sm text-[#6B7280]">
+                      <p className="text-sm text-text-secondary">
                         vs. 30 minutes ago
                       </p>
-                      <p className="text-xs text-[#9CA3AF]">
+                      <p className="text-xs text-text-tertiary">
                         Last updated: {timestamp}
                       </p>
                     </div>
@@ -493,7 +493,7 @@ export default function RoomData() {
                 {/* Quick Actions */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg font-bold text-[#002147]">Quick Actions</CardTitle>
+                    <CardTitle className="text-lg font-bold text-brand-blue">Quick Actions</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <Button variant="outline" className="w-full justify-start">
@@ -527,7 +527,7 @@ export default function RoomData() {
                         <CardContent className="p-4 space-y-3">
                           {/* Header Row: Sensor Name + Connection Status */}
                           <div className="flex items-center justify-between">
-                            <h3 className="text-sm sm:text-base font-semibold text-[#002147]">
+                            <h3 className="text-sm sm:text-base font-semibold text-brand-blue">
                               {sensor.name}
                             </h3>
                             <ConnectionStatusBadge connected={sensor.connected} />
@@ -535,7 +535,7 @@ export default function RoomData() {
                           
                           {/* Large Centered Value */}
                           <div className="text-center py-2">
-                            <span className="text-2xl sm:text-3xl font-bold text-[#002147]">
+                            <span className="text-2xl sm:text-3xl font-bold text-brand-blue">
                               {sensor.value}
                             </span>
                           </div>
@@ -554,15 +554,15 @@ export default function RoomData() {
                 {/* Occupant Count - Shows after sensors, before camera */}
                 <Card className="mt-6 lg:hidden">
                   <CardHeader>
-                    <CardTitle className="text-lg font-bold text-[#002147]">Occupants</CardTitle>
+                    <CardTitle className="text-lg font-bold text-brand-blue">Occupants</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {/* Main Count Display */}
                     <div className="flex items-center justify-center gap-4">
                       {/* Large Occupant Number */}
                       <div className="flex items-baseline gap-2">
-                        <Users className="h-8 w-8 text-[#002147]" />
-                        <span className="text-5xl font-bold text-[#002147]">{roomData.occupants}</span>
+                        <Users className="h-8 w-8 text-brand-blue" />
+                        <span className="text-5xl font-bold text-brand-blue">{roomData.occupants}</span>
                       </div>
                       
                       {/* Trend Indicator */}
@@ -571,10 +571,10 @@ export default function RoomData() {
                     
                     {/* Context Information */}
                     <div className="text-center space-y-1">
-                      <p className="text-sm text-[#6B7280]">
+                      <p className="text-sm text-text-secondary">
                         vs. 30 minutes ago
                       </p>
-                      <p className="text-xs text-[#9CA3AF]">
+                      <p className="text-xs text-text-tertiary">
                         Last updated: {timestamp}
                       </p>
                     </div>
@@ -645,7 +645,7 @@ export default function RoomData() {
                             }}
                             className="w-2 h-2 rounded-full transition-all"
                             style={{
-                              backgroundColor: index === currentImageIndex ? '#002147' : '#CBD5E1'
+                              backgroundColor: index === currentImageIndex ? 'hsl(var(--brand-blue))' : '#CBD5E1'
                             }}
                           />
                         ))}

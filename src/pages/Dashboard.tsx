@@ -142,14 +142,14 @@ export default function Dashboard() {
                 
                 {/* Add New Room Button - Only visible for Admin */}
                 {canAddRoom && (
-                  <div 
+                  <div
                     onClick={handleAddRoom}
-                    className="relative w-full bg-white rounded-xl shadow-sm border-2 border-dashed border-[#CBD5E1] hover:shadow-md hover:border-[#002147] transition-all duration-200 cursor-pointer overflow-hidden flex items-center justify-center min-h-[280px]"
+                    className="relative w-full bg-white rounded-xl shadow-sm border-2 border-dashed border-[#CBD5E1] hover:shadow-md hover:border-brand-blue transition-all duration-200 cursor-pointer overflow-hidden flex items-center justify-center min-h-[280px]"
                     style={{ fontFamily: 'Inter, Poppins, sans-serif' }}
                   >
                     <div className="flex flex-col items-center justify-center gap-3">
-                      <Plus className="h-12 w-12 text-[#002147]" />
-                      <p className="text-[16px] font-semibold text-[#002147]">Add New Room</p>
+                      <Plus className="h-12 w-12 text-brand-blue" />
+                      <p className="text-[16px] font-semibold text-brand-blue">Add New Room</p>
                     </div>
                   </div>
                 )}

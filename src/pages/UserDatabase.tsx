@@ -327,10 +327,10 @@ export default function UserDatabase() {
     return (
       <PageLayout>
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-600">{error}</p>
+          <p className="text-error">{error}</p>
           <button 
             onClick={loadUsers}
-            className="mt-2 text-sm text-red-700 underline hover:no-underline"
+            className="mt-2 text-sm text-error-hover underline hover:no-underline"
           >
             Try again
           </button>
@@ -351,7 +351,7 @@ export default function UserDatabase() {
               Back to Settings
             </Button>
 
-            <h2 className="text-2xl font-bold text-[#002147]">User Database</h2>
+            <h2 className="text-2xl font-bold text-brand-blue">User Database</h2>
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="relative max-w-md w-full">
@@ -468,14 +468,14 @@ export default function UserDatabase() {
           }}
         >
           <DialogHeader>
-            <DialogTitle className="text-xl sm:text-2xl font-bold text-[#002147]">Edit User Information</DialogTitle>
+            <DialogTitle className="text-xl sm:text-2xl font-bold text-brand-blue">Edit User Information</DialogTitle>
           </DialogHeader>
           
           {editingUser && (
             <div className="space-y-4 sm:space-y-6">
             {/* Basic Information */}
             <div className="space-y-3 sm:space-y-4">
-                <h3 className="text-base sm:text-lg font-semibold text-[#002147] border-b border-[#F1C94E] pb-2">
+                <h3 className="text-base sm:text-lg font-semibold text-brand-blue border-b border-brand-yellow pb-2">
                   Basic Information
                 </h3>
                 
@@ -536,7 +536,7 @@ export default function UserDatabase() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-icon-secondary hover:text-icon-primary"
                       >
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -598,7 +598,7 @@ export default function UserDatabase() {
               {/* User Role - Only for non-admin users */}
               {!isSystemAdmin && (
                 <div className="space-y-3 sm:space-y-4">
-                  <h3 className="text-base sm:text-lg font-semibold text-[#002147] border-b border-[#F1C94E] pb-2">
+                  <h3 className="text-base sm:text-lg font-semibold text-brand-blue border-b border-brand-yellow pb-2">
                     User Role
                   </h3>
                   
@@ -654,7 +654,7 @@ export default function UserDatabase() {
             </Button>
             <Button 
               onClick={handleSaveEdit} 
-              className="w-full sm:w-auto h-9 sm:h-10 text-sm bg-[#002147] hover:bg-[#002147]/90"
+              className="w-full sm:w-auto h-9 sm:h-10 text-sm bg-brand-blue hover:bg-brand-blue/90"
             >
               Save Changes
             </Button>
@@ -670,9 +670,9 @@ export default function UserDatabase() {
           <AlertDialogHeader>
             <div className="flex items-center gap-3 mb-2">
               <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-full bg-red-100">
-                <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
+                <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-error" />
               </div>
-              <AlertDialogTitle className="text-lg sm:text-xl font-bold text-[#002147]">
+              <AlertDialogTitle className="text-lg sm:text-xl font-bold text-brand-blue">
                 Delete User
               </AlertDialogTitle>
             </div>
@@ -680,23 +680,23 @@ export default function UserDatabase() {
               <div>Are you sure you want to delete this user?</div>
               {deletingUser && (
                 <div className="bg-gray-50 p-3 rounded-lg space-y-1 border border-gray-200">
-                  <div className="font-semibold text-gray-900">
+                  <div className="font-semibold text-text-primary">
                     {`${deletingUser.firstName} ${deletingUser.middleName} ${deletingUser.surname}`.trim()}
                   </div>
-                  <div className="text-sm text-gray-600">{deletingUser.email}</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-sm text-text-secondary">{deletingUser.email}</div>
+                  <div className="text-xs text-text-tertiary">
                     {deletingUser.adminId ? `Admin ID: ${deletingUser.adminId}` : 
                      deletingUser.employeeId ? `Employee ID: ${deletingUser.employeeId}` : ''}
                   </div>
                 </div>
               )}
-              <div className="font-semibold text-red-600">
+              <div className="font-semibold text-error">
                 Reminder: This action cannot be undone.
               </div>
               
               {/* Password Confirmation Field */}
               <div className="space-y-2 pt-2">
-                <Label htmlFor="delete-password" className="text-sm font-semibold text-gray-700">
+                <Label htmlFor="delete-password" className="text-sm font-semibold text-text-primary">
                   Confirm with Your Password
                 </Label>
                 <div className="relative">
@@ -716,9 +716,9 @@ export default function UserDatabase() {
                     onClick={() => setShowDeletePassword(!showDeletePassword)}
                   >
                     {showDeletePassword ? (
-                      <EyeOff className="h-4 w-4 text-gray-500" />
+                      <EyeOff className="h-4 w-4 text-icon-secondary" />
                     ) : (
-                      <Eye className="h-4 w-4 text-gray-500" />
+                      <Eye className="h-4 w-4 text-icon-secondary" />
                     )}
                   </Button>
                 </div>
