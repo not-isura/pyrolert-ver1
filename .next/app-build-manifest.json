@@ -21,10 +21,26 @@
       "static/chunks/main-app.js",
       "static/chunks/app/dashboard/page.js"
     ],
+<<<<<<< Updated upstream
+=======
+    "/register-room/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/register-room/page.js"
+    ],
+>>>>>>> Stashed changes
     "/room-data/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/room-data/page.js"
+<<<<<<< Updated upstream
+=======
+    ],
+    "/event-logs/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/event-logs/page.js"
+>>>>>>> Stashed changes
     ]
   }
 }
