@@ -55,10 +55,10 @@ export default function CreateAccount() {
     <div className="min-h-screen bg-background">
       <Header onLogout={() => router.push("/")} onSettings={() => router.push("/settings")} />
       
-      <div className="flex">
+      <div className="flex h-[calc(100vh-4rem)]">
         <Sidebar />
         
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <div className="max-w-4xl mx-auto">
             <Button 
               variant="ghost" 
@@ -89,6 +89,7 @@ export default function CreateAccount() {
                         placeholder="Juan"
                         value={formData.firstName}
                         onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                        className="placeholder:text-gray-400"
                       />
                     </div>
 
@@ -99,6 +100,7 @@ export default function CreateAccount() {
                         placeholder="Santos"
                         value={formData.middleName}
                         onChange={(e) => setFormData(prev => ({ ...prev, middleName: e.target.value }))}
+                        className="placeholder:text-gray-400"
                       />
                     </div>
 
@@ -109,6 +111,7 @@ export default function CreateAccount() {
                         placeholder="Dela Cruz"
                         value={formData.surname}
                         onChange={(e) => setFormData(prev => ({ ...prev, surname: e.target.value }))}
+                        className="placeholder:text-gray-400"
                       />
                     </div>
                   </div>
@@ -122,6 +125,7 @@ export default function CreateAccount() {
                         placeholder="juan.delacruz@company.com"
                         value={formData.email}
                         onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                        className="placeholder:text-gray-400"
                       />
                     </div>
 
@@ -182,6 +186,7 @@ export default function CreateAccount() {
                         placeholder="EMP-2025-001"
                         value={formData.employeeNumber}
                         onChange={(e) => setFormData(prev => ({ ...prev, employeeNumber: e.target.value }))}
+                        className="placeholder:text-gray-400"
                       />
                     </div>
 

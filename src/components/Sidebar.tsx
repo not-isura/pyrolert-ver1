@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Database, FileText } from "lucide-react";
+import { Home, BarChart3, FileText } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,7 @@ const navItems = [
   },
   { 
     title: "Room Recent Data", 
-    icon: Database, 
+    icon: BarChart3, 
     path: "/room-data",
     roles: ['admin', 'security', 'dean', 'facility', 'director'] 
   },
@@ -37,7 +37,7 @@ export const Sidebar = () => {
   );
   
   return (
-    <aside className="hidden lg:block lg:w-16 xl:w-64 bg-card border-r border-border h-[calc(100vh-4rem)] sticky top-16 overflow-hidden">
+    <aside className="hidden lg:block lg:w-16 xl:w-64 bg-card border-r border-border h-[calc(100vh-4rem)] sticky top-16 overflow-y-auto">
       <nav className="p-2 lg:p-4 space-y-2">
         {visibleNavItems.map((item) => {
           const isActive = pathname === item.path;

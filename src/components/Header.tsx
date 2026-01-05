@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { LogOut, Settings, Menu, X, Home, Database, FileText } from "lucide-react";
+import { LogOut, Settings, Menu, X, Home, BarChart3, FileText } from "lucide-react";
 import { Button } from "./ui/button";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers";
+import { LoadingOverlay } from "./LoadingOverlay";
 
 interface HeaderProps {
   userName?: string;
@@ -16,6 +17,7 @@ interface HeaderProps {
 
 export const Header = ({ onSettings }: HeaderProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -31,13 +33,21 @@ export const Header = ({ onSettings }: HeaderProps) => {
   });
 
   const handleLogout = async () => {
-    await logout();
-    router.push('/');
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      // Small delay to show the logout indicator
+      await new Promise(resolve => setTimeout(resolve, 800));
+      router.push('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      setIsLoggingOut(false);
+    }
   };
 
   const navItems = [
     { title: "Dashboard", icon: Home, path: "/dashboard" },
-    { title: "Room Recent Data", icon: Database, path: "/room-data" },
+    { title: "Room Recent Data", icon: BarChart3, path: "/room-data" },
     { title: "All Event Logs", icon: FileText, path: "/event-logs" },
   ];
 
@@ -141,6 +151,8 @@ export const Header = ({ onSettings }: HeaderProps) => {
 
   return (
     <>
+      {isLoggingOut && <LoadingOverlay message="Logging Out" isLoggingOut={true} />}
+      
       <header className="sticky top-0 z-40 h-16 bg-primary text-primary-foreground px-4 sm:px-6 flex items-center justify-between border-b border-border shadow-sm">
         {/* Mobile Layout */}
         <div className="flex items-center justify-between w-full lg:hidden">
@@ -264,10 +276,17 @@ export const Header = ({ onSettings }: HeaderProps) => {
 
             {/* Menu Content */}
             <div className="flex-1 flex flex-col p-6 space-y-6 overflow-y-auto">
-              {/* Logo Placeholder - Add your logo here in the future */}
+              {/* Logo */}
               <div className="text-center space-y-3 pb-6 border-b border-white/10">
-                <div className="w-24 h-24 bg-white/10 rounded-lg flex items-center justify-center mx-auto border-2 border-dashed border-white/30">
-                  <p className="text-xs text-white/50 text-center px-2">Logo Placeholder</p>
+                <div className="flex items-center justify-center mx-auto">
+                  <Image
+                    src="/pyrolert_logo.svg"
+                    alt="Pyrolert Logo"
+                    width={96}
+                    height={96}
+                    priority
+                    className="w-24 h-24"
+                  />
                 </div>
               </div>
 

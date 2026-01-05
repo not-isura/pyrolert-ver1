@@ -58,10 +58,10 @@ export default function Settings() {
     <div className="min-h-screen bg-background">
       <Header onLogout={() => router.push("/")} onSettings={() => router.push("/settings")} />
       
-      <div className="flex">
+      <div className="flex h-[calc(100vh-4rem)]">
         <Sidebar />
         
-        <main className="flex-1 p-8">
+        <main className="flex-1 overflow-y-auto p-8">
           <div className="max-w-7xl mx-auto space-y-6">
             <h2 className="text-2xl font-bold text-foreground">Settings</h2>
 

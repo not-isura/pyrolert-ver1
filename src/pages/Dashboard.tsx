@@ -101,10 +101,10 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background">
       <Header userName="Admin User" onLogout={handleLogout} onSettings={handleSettings} />
       
-      <div className="flex">
+      <div className="flex h-[calc(100vh-4rem)]">
         <Sidebar />
         
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <div className="max-w-[1920px] mx-auto">
             <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4 sm:mb-6">Room Overview</h2>
             

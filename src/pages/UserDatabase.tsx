@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Edit, Trash2, ArrowLeft, Eye, EyeOff, AlertTriangle, Search } from "lucide-react";
@@ -353,19 +354,20 @@ export default function UserDatabase() {
 
             <h2 className="text-2xl font-bold text-brand-blue">User Database</h2>
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            {/* Desktop Layout (lg and above) */}
+            <div className="hidden lg:flex items-center justify-between gap-4">
               <div className="relative max-w-md w-full">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by name, email, ID, or role..."
+                  placeholder="Search by name, email, or role..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
                 />
               </div>
               
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Entries per page:</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">Entries per page:</span>
                 <Select value={entriesPerPage} onValueChange={setEntriesPerPage}>
                   <SelectTrigger className="w-24">
                     <SelectValue />
@@ -383,11 +385,44 @@ export default function UserDatabase() {
               </div>
             </div>
 
-            <div className="border rounded-lg overflow-x-auto">
+            {/* Mobile Layout (below lg) */}
+            <div className="lg:hidden space-y-3">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name, email, or role..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 w-full"
+                />
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">Entries per page:</span>
+                  <Select value={entriesPerPage} onValueChange={setEntriesPerPage}>
+                    <SelectTrigger className="flex-1 sm:w-24">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <Button variant="outline" onClick={() => setSearchTerm("")} className="w-full sm:w-auto">
+                  Clear Filter
+                </Button>
+              </div>
+            </div>
+
+            {/* Desktop: Table View */}
+            <div className="hidden lg:block border rounded-lg overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-center whitespace-nowrap">ID</TableHead>
                     <TableHead className="text-center whitespace-nowrap">Name</TableHead>
                     <TableHead className="text-center whitespace-nowrap">Email</TableHead>
                     <TableHead className="text-center whitespace-nowrap">Role</TableHead>
@@ -398,9 +433,6 @@ export default function UserDatabase() {
                 <TableBody>
                   {filteredUsers.map((user) => (
                     <TableRow key={user.id}>
-                      <TableCell className="font-mono text-sm text-center whitespace-nowrap">
-                        {user.employeeId || user.id}
-                      </TableCell>
                       <TableCell className="font-medium text-center whitespace-nowrap">
                         {`${user.firstName} ${user.middleName} ${user.surname}`.replace(/\s+/g, ' ').trim()}
                       </TableCell>
@@ -433,7 +465,51 @@ export default function UserDatabase() {
                   ))}
                 </TableBody>
               </Table>
-            </div>            <PaginationControls
+            </div>
+
+            {/* Mobile/Tablet: Card View */}
+            <div className="lg:hidden space-y-3">
+              {filteredUsers.map((user) => (
+                <Card key={user.id}>
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-sm font-semibold text-brand-blue truncate">
+                          {`${user.firstName} ${user.middleName} ${user.surname}`.replace(/\s+/g, ' ').trim()}
+                        </CardTitle>
+                        <p className="text-xs text-muted-foreground mt-1">{user.email}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{roleLabels[user.role]}</p>
+                      </div>
+                      <UserStatusBadge status={user.status} />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleEditClick(user)}
+                        className="flex-1"
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDeleteClick(user)}
+                        className="flex-1"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <PaginationControls
               currentPage={currentPage}
               totalItems={users.length}
               filteredItems={filteredUsers.length}

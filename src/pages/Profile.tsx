@@ -40,10 +40,10 @@ export default function Profile() {
     <div className="min-h-screen bg-background">
       <Header onLogout={() => router.push("/")} onSettings={() => router.push("/settings")} />
       
-      <div className="flex">
+      <div className="flex h-[calc(100vh-4rem)]">
         <Sidebar />
         
-        <main className="flex-1 p-8">
+        <main className="flex-1 overflow-y-auto p-8">
           <div className="max-w-3xl mx-auto">
             <Button 
               variant="ghost" 

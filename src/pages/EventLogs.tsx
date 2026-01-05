@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Download, Eye, Search } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -143,8 +145,7 @@ export default function EventLogs() {
   };
 
   const filteredLogs = logs.filter(log => {
-    const matchesSearch = log.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.eventId.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = log.location.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesEventType = eventTypeFilter === "all" || log.eventType === eventTypeFilter;
     
@@ -495,23 +496,105 @@ export default function EventLogs() {
 
             {!loading && !error && (
               <>
-            <div className="flex flex-col gap-4">
-              {/* Search and Action Row */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="relative w-full sm:max-w-md">
+            <div className="space-y-3 w-full">
+              {/* Desktop/Tablet Layout (md breakpoint and above) */}
+              <div className="hidden md:block space-y-3">
+                {/* Row 1: Search Bar + Entries Per Page */}
+                <div className="flex gap-2 items-center w-full">
+                  <div className="relative flex-1 min-w-0">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by location or event ID..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9 w-full"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-sm text-muted-foreground whitespace-nowrap hidden lg:inline">Entries per page:</span>
+                    <span className="text-sm text-muted-foreground whitespace-nowrap lg:hidden">Show:</span>
+                    <Select value={entriesPerPage} onValueChange={setEntriesPerPage}>
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Row 2: Event Type | From | To | Clear Filters */}
+                <div className="flex gap-2 items-center w-full flex-wrap">
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-sm text-muted-foreground whitespace-nowrap hidden lg:inline">Event Type:</span>
+                    <span className="text-sm text-muted-foreground whitespace-nowrap lg:hidden">Type:</span>
+                    <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Types</SelectItem>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="warning">Warning</SelectItem>
+                        <SelectItem value="alert">High Alert</SelectItem>
+                        <SelectItem value="error">Error</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">From:</span>
+                    <Input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-36"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">To:</span>
+                    <Input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="w-36"
+                    />
+                  </div>
+
+                  <Button 
+                    variant="outline" 
+                    onClick={clearFilters}
+                    className="shrink-0"
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
+              </div>
+
+              {/* Mobile Layout (below md breakpoint) */}
+              <div className="md:hidden space-y-3 w-full">
+                {/* Search Bar */}
+                <div className="relative w-full">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search by location or event ID..."
+                    placeholder="Search by location..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9"
+                    className="pl-9 w-full"
                   />
                 </div>
-                
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <span className="text-sm text-muted-foreground hidden sm:inline">Entries per page:</span>
+
+                {/* Entries Per Page */}
+                <div className="flex items-center gap-2 w-full">
+                  <span className="text-sm text-muted-foreground shrink-0">Entries per page:</span>
                   <Select value={entriesPerPage} onValueChange={setEntriesPerPage}>
-                    <SelectTrigger className="w-20 sm:w-24">
+                    <SelectTrigger className="flex-1">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -522,14 +605,12 @@ export default function EventLogs() {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
 
-              {/* Filter Row */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <span className="text-sm text-muted-foreground min-w-fit">Event Type:</span>
+                {/* Event Type */}
+                <div className="flex items-center gap-2 w-full">
+                  <span className="text-sm text-muted-foreground shrink-0">Event Type:</span>
                   <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
-                    <SelectTrigger className="w-full sm:w-40">
+                    <SelectTrigger className="flex-1">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -542,46 +623,47 @@ export default function EventLogs() {
                   </Select>
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <span className="text-sm text-muted-foreground min-w-fit">From:</span>
-                  <Input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full sm:w-44"
-                    placeholder="Start date"
-                  />
+                {/* From | To */}
+                <div className="flex gap-2 items-center w-full">
+                  <div className="flex items-center gap-1 flex-1 min-w-0">
+                    <span className="text-sm text-muted-foreground shrink-0">From:</span>
+                    <Input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="flex-1 min-w-0"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1 flex-1 min-w-0">
+                    <span className="text-sm text-muted-foreground shrink-0">To:</span>
+                    <Input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="flex-1 min-w-0"
+                    />
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <span className="text-sm text-muted-foreground min-w-fit">To:</span>
-                  <Input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full sm:w-44"
-                    placeholder="End date"
-                  />
-                </div>
-
+                {/* Clear Filters */}
                 <Button 
                   variant="outline" 
                   onClick={clearFilters}
-                  className="w-full sm:w-auto"
+                  className="w-full"
                 >
                   Clear Filters
                 </Button>
               </div>
             </div>
 
-            <div className="border rounded-lg overflow-x-auto">
+            {/* Desktop: Table View */}
+            <div className="hidden lg:block border rounded-lg overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-center whitespace-nowrap">Timestamp</TableHead>
                     <TableHead className="text-center whitespace-nowrap">Location</TableHead>
-                    <TableHead className="text-center whitespace-nowrap">Event Type</TableHead>
-                    <TableHead className="text-center whitespace-nowrap">Event ID</TableHead>
+                    <TableHead className="text-center whitespace-nowrap">Conclusion</TableHead>
                     <TableHead className="text-center whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -595,7 +677,6 @@ export default function EventLogs() {
                           <StatusBadge status={log.eventType} />
                         </div>
                       </TableCell>
-                      <TableCell className="font-mono text-sm text-center whitespace-nowrap">{log.eventId}</TableCell>
                       <TableCell className="text-center whitespace-nowrap">
                         <div className="flex justify-center gap-2">
                           <Button 
@@ -620,6 +701,49 @@ export default function EventLogs() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+
+            {/* Mobile/Tablet: Card View */}
+            <div className="lg:hidden space-y-3">
+              {filteredLogs.map((log) => (
+                <Card key={log.id}>
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-sm font-semibold text-[#002147] truncate">
+                          {log.location}
+                        </CardTitle>
+                      </div>
+                      <StatusBadge status={log.eventType} />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="text-xs text-muted-foreground">
+                      <span className="font-medium">Time:</span> {log.timestamp}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handlePreview(log)}
+                        className="flex-1"
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Preview
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDownload(log)}
+                        className="flex-1"
+                      >
+                        <Download className="h-4 w-4 mr-1" />
+                        Download
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>            <PaginationControls
               currentPage={currentPage}
               totalItems={logs.length}
