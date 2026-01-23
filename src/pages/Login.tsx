@@ -13,6 +13,9 @@ import { loginUser } from "@/services/supabaseService";
 import { useAuth } from "@/app/providers";
 
 export default function Login() {
+  const [animationStage, setAnimationStage] = useState<'splash' | 'transitioning' | 'complete'>('splash');
+  const [showSplash, setShowSplash] = useState(true);
+  const [showLogin, setShowLogin] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -255,23 +258,80 @@ export default function Login() {
     setCanResendOtp(false);
   };
 
+  // Integrated splash animation
+  useEffect(() => {
+    const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
+    if (hasSeenSplash) {
+      setAnimationStage('complete');
+      setShowSplash(false);
+      setShowLogin(true);
+      return;
+    }
+
+    // Stage 1: Show splash with logo fade-in from left (1 second)
+    const transitionTimer = setTimeout(() => {
+      setAnimationStage('transitioning');
+    }, 1000);
+
+    // Stage 2: Logo zooms to position (1.5 seconds)
+    const completeTimer = setTimeout(() => {
+      setAnimationStage('complete');
+      setShowLogin(true);
+    }, 2500);
+
+    // Stage 3: Mark as seen
+    const seenTimer = setTimeout(() => {
+      sessionStorage.setItem('hasSeenSplash', 'true');
+    }, 2600);
+
+    return () => {
+      clearTimeout(transitionTimer);
+      clearTimeout(completeTimer);
+      clearTimeout(seenTimer);
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white p-4">
-      <div className="w-full max-w-[400px] space-y-8">
-        {/* Branding - Logo */}
-        <div className="flex justify-center">
-          <Image
-            src="/pyrolert_dark.svg"
-            alt="Pyrolert Fire Alert Systems"
-            width={400}
-            height={120}
-            priority
-            className="w-full h-auto"
-          />
-        </div>
+    <>
+      {/* Splash Screen Background */}
+      {animationStage !== 'complete' && (
+        <div className={`fixed inset-0 z-50 bg-white transition-opacity duration-1000 ${
+          animationStage === 'transitioning' ? 'opacity-0' : 'opacity-100'
+        }`} />
+      )}
+
+      {/* Login Page */}
+      <div className="min-h-screen flex items-center justify-center bg-white p-4">
+        <div className={`w-full max-w-[400px] space-y-8 transition-all duration-700 ${
+          showLogin ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+        }`}>
+          {/* Branding - Logo with integrated splash animation */}
+          <div className="flex justify-center">
+            <div className={`transition-all duration-1000 ease-out ${
+              animationStage === 'splash'
+                ? 'scale-150'
+                : 'scale-100'
+            }`}>
+              <Image
+                src="/pyrolert_dark.svg"
+                alt="Pyrolert Fire Alert Systems"
+                width={400}
+                height={120}
+                priority
+                className={`w-full h-auto transition-all duration-700 ${
+                  animationStage === 'splash' ? 'opacity-0 -translate-x-12' : 'opacity-100 translate-x-0'
+                }`}
+                style={{
+                  animation: animationStage === 'splash' ? 'fadeInFromLeft 0.7s ease-out forwards' : undefined
+                }}
+              />
+            </div>
+          </div>
 
         {/* Login Form */}
-        <div className="space-y-6">
+        <div className={`space-y-6 transition-all duration-700 delay-300 ${
+          showLogin ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
+        }`}>
           <h2 className="text-[18px] font-semibold text-brand-yellow text-center">
             Log In to Your Account
           </h2>
@@ -337,9 +397,9 @@ export default function Login() {
             </Button>
           </form>
         </div>
-      </div>
+        </div>
 
-      {/* Forgot Password Dialog */}
+        {/* Forgot Password Dialog */}
       <Dialog open={isForgotPasswordOpen} onOpenChange={setIsForgotPasswordOpen}>
         <DialogContent 
           className={`max-w-[90vw] sm:max-w-md overflow-y-auto ${isKeyboardOpen ? 'max-h-[60vh] !translate-y-0' : 'max-h-[85vh]'}`}
@@ -593,6 +653,7 @@ export default function Login() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   );
 }

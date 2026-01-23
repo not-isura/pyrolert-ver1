@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
@@ -11,22 +11,41 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useAuth } from "@/app/providers";
 
 export default function Profile() {
   const router = useRouter();
   const { toast } = useToast();
   const { canEditProfile } = usePermissions();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
-    firstName: "Admin",
+    firstName: "",
     middleName: "",
-    surname: "User",
-    email: "admin@pyrolert.com",
-    role: "Pyrolert System Admin",
-    adminId: "ADMIN001",
+    surname: "",
+    email: "",
+    role: "",
+    adminId: "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
+
+  // Load user data when component mounts or user changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        firstName: user.firstName || "",
+        middleName: user.middleName || "",
+        surname: user.surname || "",
+        email: user.email || "",
+        role: user.role || "",
+        adminId: user.userId || "",
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    }
+  }, [user]);
 
   const handleSave = () => {
     const fullName = `${formData.firstName} ${formData.middleName} ${formData.surname}`.trim();

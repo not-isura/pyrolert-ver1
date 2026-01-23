@@ -73,11 +73,11 @@ export default function Settings() {
                   onClick={() => router.push(option.path)}
                 >
                   <CardHeader>
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <option.icon className="h-6 w-6 text-primary" />
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 flex-shrink-0 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <option.icon className="h-6 w-6 flex-shrink-0 text-primary" />
                       </div>
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <CardTitle className="text-lg">{option.title}</CardTitle>
                         <CardDescription>{option.description}</CardDescription>
                       </div>

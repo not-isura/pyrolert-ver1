@@ -4,6 +4,16 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { LogOut, Settings, Menu, X, Home, BarChart3, FileText } from "lucide-react";
 import { Button } from "./ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers";
@@ -17,6 +27,7 @@ interface HeaderProps {
 
 export const Header = ({ onSettings }: HeaderProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -32,7 +43,12 @@ export const Header = ({ onSettings }: HeaderProps) => {
     day: 'numeric' 
   });
 
-  const handleLogout = async () => {
+  const handleLogoutClick = () => {
+    setIsLogoutDialogOpen(true);
+  };
+
+  const handleLogoutConfirm = async () => {
+    setIsLogoutDialogOpen(false);
     setIsLoggingOut(true);
     try {
       await logout();
@@ -144,11 +160,6 @@ export const Header = ({ onSettings }: HeaderProps) => {
     }
   };
 
-  const handleLogoutClick = () => {
-    closeMobileMenu();
-    handleLogout();
-  };
-
   return (
     <>
       {isLoggingOut && <LoadingOverlay message="Logging Out" isLoggingOut={true} />}
@@ -166,11 +177,10 @@ export const Header = ({ onSettings }: HeaderProps) => {
           />
           <Button 
             variant="ghost" 
-            size="icon"
-            className="text-primary-foreground hover:bg-accent hover:text-primary"
+            className="h-12 w-12 flex-shrink-0 text-primary-foreground hover:bg-accent hover:text-primary flex items-center justify-center"
             onClick={openMobileMenu}
           >
-            <Menu className="h-6 w-6" />
+            <Menu className="h-6 w-6 flex-shrink-0" />
           </Button>
         </div>
 
@@ -206,7 +216,7 @@ export const Header = ({ onSettings }: HeaderProps) => {
                 variant="ghost" 
                 size="icon"
                 className="text-primary-foreground hover:bg-accent hover:text-primary"
-                onClick={handleLogout}
+                onClick={handleLogoutClick}
               >
                 <LogOut className="h-5 w-5" />
               </Button>
@@ -310,7 +320,10 @@ export const Header = ({ onSettings }: HeaderProps) => {
                 <Button 
                   variant="outline" 
                   className="w-full h-12 text-base font-semibold bg-[#FFFFF0] border-white/30 text-brand-blue hover:bg-white justify-start"
-                  onClick={handleLogoutClick}
+                  onClick={() => {
+                    closeMobileMenu();
+                    handleLogoutClick();
+                  }}
                 >
                   <LogOut className="h-5 w-5 mr-3" />
                   Logout
@@ -320,6 +333,27 @@ export const Header = ({ onSettings }: HeaderProps) => {
           </div>
         </div>
       )}
+
+      {/* Logout Confirmation Dialog */}
+      <AlertDialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Logout</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to logout? You will need to sign in again to access your account.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLogoutConfirm}
+              className="bg-brand-blue hover:bg-brand-blue/90"
+            >
+              Logout
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
