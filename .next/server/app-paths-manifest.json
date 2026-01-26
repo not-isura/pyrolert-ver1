@@ -1,7 +1,15 @@
 {
+<<<<<<< Updated upstream
   "/dashboard/page": "app/dashboard/page.js",
   "/settings/profile/page": "app/settings/profile/page.js",
   "/page": "app/page.js",
   "/settings/terms/page": "app/settings/terms/page.js",
   "/room-data/page": "app/room-data/page.js"
+=======
+  "/room-data/page": "app/room-data/page.js",
+  "/event-logs/page": "app/event-logs/page.js",
+  "/settings/page": "app/settings/page.js",
+  "/page": "app/page.js",
+  "/dashboard/page": "app/dashboard/page.js"
+>>>>>>> Stashed changes
 }
