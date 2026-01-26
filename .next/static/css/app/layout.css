@@ -757,9 +757,6 @@ video {
 .top-4 {
   top: 1rem;
 }
-.top-8 {
-  top: 2rem;
-}
 .top-\[1px\] {
   top: 1px;
 }
@@ -973,9 +970,6 @@ video {
 .h-9 {
   height: 2.25rem;
 }
-.h-96 {
-  height: 24rem;
-}
 .h-\[1px\] {
   height: 1px;
 }
@@ -1116,9 +1110,6 @@ video {
 }
 .w-9 {
   width: 2.25rem;
-}
-.w-96 {
-  width: 24rem;
 }
 .w-\[--sidebar-width\] {
   width: var(--sidebar-width);
@@ -1295,11 +1286,6 @@ video {
 .scale-150 {
   --tw-scale-x: 1.5;
   --tw-scale-y: 1.5;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-}
-.scale-50 {
-  --tw-scale-x: .5;
-  --tw-scale-y: .5;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 .transform {
@@ -1700,14 +1686,8 @@ video {
 .bg-brand-blue {
   background-color: hsl(var(--brand-blue));
 }
-.bg-brand-blue\/0 {
-  background-color: hsl(var(--brand-blue) / 0);
-}
 .bg-brand-blue\/10 {
   background-color: hsl(var(--brand-blue) / 0.1);
-}
-.bg-brand-blue\/5 {
-  background-color: hsl(var(--brand-blue) / 0.05);
 }
 .bg-card {
   background-color: hsl(var(--card));
@@ -2271,10 +2251,6 @@ video {
 }
 .blur {
   --tw-blur: blur(8px);
-  filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
-}
-.blur-3xl {
-  --tw-blur: blur(64px);
   filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
 }
 .filter {

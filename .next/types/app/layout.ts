@@ -1,4 +1,4 @@
-// File: C:\Users\Aleann\Documents\NU Baliwag\4th Year\CPTHS\pyrolert-ver1\src\app\layout.tsx
+// File: D:\001-National University\Fourth Year\THESIS-Files\pyrolert-ver1\src\app\layout.tsx
 import * as entry from '../../../src/app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

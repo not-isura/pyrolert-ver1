@@ -34,8 +34,13 @@ export default function Login() {
   const [viewportOffset, setViewportOffset] = useState(0);
   const router = useRouter();
   const { toast } = useToast();
-  const { refreshUser } = useAuth();
+  const { refreshUser, resetLoading } = useAuth();
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Reset loading state when login page mounts (after logout)
+  useEffect(() => {
+    resetLoading();
+  }, [resetLoading]);
 
   // Keyboard detection for mobile with iOS viewport offset tracking
   useEffect(() => {

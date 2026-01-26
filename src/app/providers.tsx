@@ -9,6 +9,7 @@ interface AuthContextType {
   isLoading: boolean;
   logout: () => Promise<void>;
   refreshUser: () => void;
+  resetLoading: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,12 +39,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = async () => {
+    setIsLoading(true); // Prevent flashing by setting loading state first
     await logoutUser();
     setUser(null);
+    // Keep isLoading true - it will redirect to login page
+  };
+
+  const resetLoading = () => {
+    setIsLoading(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, isLoading, logout, refreshUser, resetLoading }}>
       <QueryClientProvider client={queryClient}>
         {children}
       </QueryClientProvider>

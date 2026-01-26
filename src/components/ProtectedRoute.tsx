@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser, type UserRole } from "@/services/supabaseService";
+import { useAuth } from "@/app/providers";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -13,6 +14,7 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const { isLoading: isAuthLoading } = useAuth();
 
   useEffect(() => {
     const checkAuth = () => {
@@ -42,8 +44,8 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     checkAuth();
   }, [router, allowedRoles]);
 
-  // Show loading while checking authentication
-  if (isChecking) {
+  // Show loading while checking authentication or during logout
+  if (isChecking || isAuthLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
