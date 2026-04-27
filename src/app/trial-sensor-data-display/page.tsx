@@ -1,23 +1,31 @@
 "use client";
 
-import SSEProvider from "@/components/SSEProvider";
-import WarmingUp from "@/components/WarmingUp";
-import FireStatus from "@/components/FireStatus";
-import SensorReadings from "@/components/SensorReadings";
-import SensorGraph from "@/components/SensorGraph";
+import SupabaseProvider from "@/components/SupabaseProvider";
+import DetectionStatus from "@/components/DetectionStatus";
+import SensorGridGraphs from "@/components/SensorGridGraphs";
 
-export default function TrialPage() {
+export default function TrialV2Page() {
     return (
-        <SSEProvider>
-            <main className="p-6">
-                <h1 className="text-2xl font-bold mb-4">
-                    🔥 Fire Detection Dashboard (Trial)
-                </h1>
-                <WarmingUp />
-                <FireStatus />
-                <SensorReadings />
-                <SensorGraph />
+        <SupabaseProvider>
+            <main className="min-h-screen bg-gray-100 p-6">
+
+                {/* Header */}
+                <div className="mb-6">
+                    <h1 className="text-2xl font-bold text-gray-800">
+                        🔥 Fire Detection Dashboard
+                    </h1>
+                    <p className="text-sm text-gray-400 mt-1">
+                        Live sensor monitoring — updates every second
+                    </p>
+                </div>
+
+                {/* Detection Status */}
+                <DetectionStatus />
+
+                {/* Sensor Graphs */}
+                <SensorGridGraphs />
+
             </main>
-        </SSEProvider>
+        </SupabaseProvider>
     );
 }

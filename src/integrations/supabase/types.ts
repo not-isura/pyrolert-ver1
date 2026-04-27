@@ -78,6 +78,42 @@ export type Database = {
           created_at?: string
         }
       }
+      sensor_readings: {
+        Row: {
+          id: number
+          ts: number
+          recorded_at: string | null
+          gas_co: number | null
+          gas_no2: number | null
+          gas_o2: number | null
+          temp_c: number | null
+          pm25: number | null
+          detection_result: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          ts: number
+          gas_co?: number | null
+          gas_no2?: number | null
+          gas_o2?: number | null
+          temp_c?: number | null
+          pm25?: number | null
+          detection_result?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          ts?: number
+          gas_co?: number | null
+          gas_no2?: number | null
+          gas_o2?: number | null
+          temp_c?: number | null
+          pm25?: number | null
+          detection_result?: string | null
+          created_at?: string
+        }
+      }
       sensors: {
         Row: {
           id: string

@@ -1,7 +1,6 @@
 "use client";
 
-import { useSensor } from "@/components/SSEProvider";
-
+import { useSensor } from "@/components/SupabaseProvider";
 export default function WarmingUp() {
     const { data, connected } = useSensor();
 
