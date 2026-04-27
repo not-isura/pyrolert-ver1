@@ -14,8 +14,10 @@ const SENSOR_CONFIG = [
         label: "Carbon Monoxide (CO)",
         unit: "ppm",
         color: "#ef4444",
-        minVal: 0,
-        maxVal: 100,
+        minVal: 0,      // preferred min
+        maxVal: 100,    // preferred max
+        //hardMin: 0,     // never go below this
+        //hardMax: 500,  // never go above this
     },
     {
         key: "gas_no2" as keyof SensorReading,
@@ -23,15 +25,19 @@ const SENSOR_CONFIG = [
         unit: "ppm",
         color: "#f97316",
         minVal: 0,
-        maxVal: 10,
+        maxVal: 5,
+        //hardMin: 0,
+        //hardMax: 10,
     },
     {
         key: "gas_o2" as keyof SensorReading,
         label: "Oxygen (O2)",
         unit: "%",
         color: "#22c55e",
-        minVal: 0,
-        maxVal: 25,
+        minVal: 10,     // preferred min (show from 10%)
+        maxVal: 25,     // preferred max
+        //hardMin: 0,     // can adapt down to 0%
+        //hardMax: 30,    // never show above 30%
     },
     {
         key: "pm25" as keyof SensorReading,
@@ -40,14 +46,18 @@ const SENSOR_CONFIG = [
         color: "#8b5cf6",
         minVal: 0,
         maxVal: 50,
+        //hardMin: 0,
+        //hardMax: 1000,
     },
     {
         key: "temp_c" as keyof SensorReading,
         label: "Temperature",
         unit: "°C",
         color: "#3b82f6",
-        minVal: 0,
-        maxVal: 100,
+        minVal: 20,
+        maxVal: 70,
+        //hardMin: 20,
+        //hardMax: 120,
     },
 ];
 
@@ -85,6 +95,7 @@ function MiniChart({
             layout: {
                 background: { color: "transparent" },
                 textColor: "#6b7280",
+                attributionLogo: false
             },
             grid: {
                 vertLines: { color: "#f3f4f6" },
@@ -117,12 +128,26 @@ function MiniChart({
             crosshairMarkerVisible: true,
             priceLineVisible: false,
             lastValueVisible: true,
-            autoscaleInfoProvider: () => ({
-                priceRange: {
-                    minValue: minVal,
-                    maxValue: maxVal,
-                },
-            }),
+            autoscaleInfoProvider: (original) => {
+                const res = original();
+
+                if (!res) {
+                    return {
+                        priceRange: {
+                            minValue: minVal,
+                            maxValue: maxVal,
+                        },
+                    };
+                }
+
+                return {
+                    priceRange: {
+                        // Never go above hardMax or below hardMin
+                        minValue: Math.min(res.priceRange.minValue, minVal),
+                        maxValue: Math.max(res.priceRange.maxValue, maxVal),
+                    },
+                };
+            },
         });
 
         chartRef.current = chart;
@@ -149,25 +174,39 @@ function MiniChart({
     useEffect(() => {
         if (!seriesRef.current || readings.length === 0) return;
 
+        const seen = new Set<number>();
+
         // Skip null values — leave gap in graph
-        const data: LineData[] = readings.reduce<LineData[]>((acc, r) => {
-            const value = r[dataKey];
-            if (typeof value !== "number" || !Number.isFinite(value)) {
+        const data: LineData[] = readings
+            .reduce<LineData[]>((acc, r) => {
+                const value = r[dataKey];
+
+                // Skip null or non-finite values
+                if (typeof value !== "number" || !Number.isFinite(value)) {
+                    return acc;
+                }
+
+                const unixTime = Math.floor(r.ts);
+                if (!Number.isFinite(unixTime)) {
+                    return acc;
+                }
+
+                // Skip duplicate timestamps ← THIS WAS MISSING
+                if (seen.has(unixTime)) {
+                    return acc;
+                }
+                seen.add(unixTime)
+
+                acc.push({
+                    time: unixTime as UTCTimestamp,
+                    value,
+                });
+
                 return acc;
-            }
+            }, [])
+            .sort((a, b) => (a.time as number) - (b.time as number)); // ← ensure asc order
 
-            const unixTime = Math.floor(r.ts) as number;
-            if (!Number.isFinite(unixTime)) {
-                return acc;
-            }
-
-            acc.push({
-                time: unixTime as UTCTimestamp,
-                value,
-            });
-
-            return acc;
-        }, []);
+        if (data.length === 0) return;
 
         seriesRef.current.setData(data);
         chartRef.current?.timeScale().scrollToRealTime();
