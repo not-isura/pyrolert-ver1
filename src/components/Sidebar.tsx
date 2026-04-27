@@ -10,7 +10,7 @@ const navItems = [
   { 
     title: "Dashboard", 
     icon: Home, 
-    path: "/dashboard",
+    path: "/dashboard-1",
     roles: ['admin', 'security', 'dean', 'facility', 'director'] 
   },
   { 

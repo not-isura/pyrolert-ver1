@@ -19,7 +19,15 @@ import {
   type Sensor
 } from "@/services/supabaseService";
 
-export default function RoomData() {
+interface RoomDataProps {
+  singleRoomMode?: boolean;
+  staticRoomName?: string;
+}
+
+export default function RoomData({
+  singleRoomMode = false,
+  staticRoomName = "Testing Room"
+}: RoomDataProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const roomId = searchParams.get("id");
@@ -52,6 +60,14 @@ export default function RoomData() {
 
   // Update room ID from URL params or set first room as default
   useEffect(() => {
+    if (singleRoomMode) {
+      if (rooms.length > 0 && !selectedRoom) {
+        // Single-room mode uses the first available room internally.
+        setSelectedRoom(rooms[0].id);
+      }
+      return;
+    }
+
     if (roomId && roomId !== selectedRoom) {
       setSelectedRoom(roomId);
     } else if (!roomId && rooms.length > 0 && !selectedRoom) {
@@ -59,7 +75,7 @@ export default function RoomData() {
       setSelectedRoom(rooms[0].id);
       router.push(`/room-data?id=${rooms[0].id}`);
     }
-  }, [roomId, rooms]);
+  }, [roomId, rooms, selectedRoom, singleRoomMode, router]);
 
   const loadRooms = async () => {
     try {
@@ -198,6 +214,10 @@ export default function RoomData() {
   };
 
   const handleRoomChange = (value: string) => {
+    if (singleRoomMode) {
+      return;
+    }
+
     setSelectedRoom(value);
     router.push(`/room-data?id=${value}`);
   };
@@ -268,6 +288,7 @@ export default function RoomData() {
   };
 
   const currentStatusConfig = statusConfig[roomData?.status || 'normal'];
+  const displayedRoomName = singleRoomMode ? staticRoomName : roomData?.name;
 
   // Helper function to get sensor by type
   const getSensor = (type: string) => {
@@ -358,20 +379,24 @@ export default function RoomData() {
     <PageLayout>
       <div className="max-w-[1920px] mx-auto space-y-6">
 
-        {/* Room Selector Dropdown */}
+        {/* Header */}
         <div className="mb-4 sm:mb-6">
-          <Select value={selectedRoom} onValueChange={handleRoomChange}>
-            <SelectTrigger className="w-full sm:w-[400px] text-xl sm:text-2xl font-bold h-auto py-3">
-              <SelectValue placeholder="Select a room" />
-            </SelectTrigger>
-            <SelectContent>
-              {rooms.map((room) => (
-                <SelectItem key={room.id} value={room.id} className="text-lg">
-                  {room.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {singleRoomMode ? (
+            <h2 className="text-xl sm:text-2xl font-bold text-brand-blue">{staticRoomName}</h2>
+          ) : (
+            <Select value={selectedRoom} onValueChange={handleRoomChange}>
+              <SelectTrigger className="w-full sm:w-[400px] text-xl sm:text-2xl font-bold h-auto py-3">
+                <SelectValue placeholder="Select a room" />
+              </SelectTrigger>
+              <SelectContent>
+                {rooms.map((room) => (
+                  <SelectItem key={room.id} value={room.id} className="text-lg">
+                    {room.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <p className="text-xs sm:text-sm text-muted-foreground mt-2">Last updated: {timestamp}</p>
         </div>
 
@@ -451,7 +476,7 @@ export default function RoomData() {
 
                 {/* Status Description */}
                 <p className="text-sm text-center text-text-primary leading-relaxed">
-                  As of <span className="font-semibold">{timestamp}</span>, the <span className="font-semibold">{roomData.name}</span>'s condition is in{" "}
+                  As of <span className="font-semibold">{timestamp}</span>, the <span className="font-semibold">{displayedRoomName}</span>'s condition is in{" "}
                   <span className="font-bold" style={{ color: currentStatusConfig.color }}>
                     {currentStatusConfig.label}
                   </span>{" "}
