@@ -44,7 +44,7 @@ const STATIC_ROOM_NAME = "Testing Room";
 
 type DetectionResultLabel = "Normal" | "Warning" | "High Alert";
 
-const STATIC_DETECTION_RESULT: DetectionResultLabel = "High Alert";
+const STATIC_DETECTION_RESULT: DetectionResultLabel = "Normal";
 
 const STATIC_SENSOR_VALUES = {
     co: 60,
@@ -52,7 +52,7 @@ const STATIC_SENSOR_VALUES = {
     pm25: 500,
     o2: 17.9,
     tempC: 57.3,
-    temp_roc: 3.21,
+    temp_roc: 0,
 };
 
 const MOCK_BASE_TS = Math.floor(Date.now() / 1000) - 95;
@@ -215,8 +215,8 @@ const describeArc = (
 
 export default function MonitoringDashboard() {
     const { readings } = useSensor();
-    const displayReadings = readings.length > 0 ? readings : MOCK_READINGS;
-    const [timestamp, setTimestamp] = useState(new Date().toLocaleString());
+    const displayReadings = readings;
+    const latestReading = displayReadings.length > 0 ? displayReadings[displayReadings.length - 1] : null;
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const touchStartX = useRef(0);
@@ -387,14 +387,86 @@ export default function MonitoringDashboard() {
         ? `${triggeredSamplesCount}/${confidenceSampleSize}`
         : "—";
 
+    const formatLastUpdated = (reading: SensorReading | null) => {
+        if (!reading) {
+            return "—";
+        }
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setTimestamp(new Date().toLocaleString());
-        }, 60000);
+        if (reading.recorded_at) {
+            return new Date(reading.recorded_at).toLocaleString();
+        }
 
-        return () => clearInterval(interval);
-    }, []);
+        if (reading.created_at) {
+            return new Date(reading.created_at).toLocaleString();
+        }
+
+        if (typeof reading.ts === "number") {
+            return new Date(reading.ts * 1000).toLocaleString();
+        }
+
+        return "—";
+    };
+
+    const lastUpdatedLabel = formatLastUpdated(latestReading);
+
+    const tempRocReadings = displayReadings.map((reading) => ({
+        ...reading,
+        temp_c: 0,
+    }));
+
+    const formatSensorValue = (sensor: SensorDisplayData, reading: SensorReading | null) => {
+        if (sensor.name === "Temp RoC") {
+            return "0.00";
+        }
+
+        if (!reading) {
+            return "—";
+        }
+
+        const rawValue = reading[sensor.dataKey];
+
+        if (typeof rawValue !== "number") {
+            return "—";
+        }
+
+        if (sensor.name === "PM2.5" || sensor.name === "CO" || sensor.name === "NO2") {
+            return rawValue.toFixed(3);
+        }
+
+        return rawValue.toFixed(2);
+    };
+
+    const getLiveStatus = (sensor: SensorDisplayData, reading: SensorReading | null): SensorStatusType => {
+        if (sensor.name === "Temp RoC") {
+            return "normal";
+        }
+
+        if (!reading) {
+            return "normal";
+        }
+
+        const rawValue = reading[sensor.dataKey];
+
+        if (typeof rawValue !== "number") {
+            return "normal";
+        }
+
+        switch (sensor.name) {
+            case "CO":
+                return getHigherIsWorseStatus(rawValue, 60, 25);
+            case "NO2":
+                return getHigherIsWorseStatus(rawValue, 1, 0.2);
+            case "PM2.5":
+                return getHigherIsWorseStatus(rawValue, 150, 90);
+            case "O2":
+                return getLowerIsWorseStatus(rawValue, 18, 19);
+            case "Temperature":
+                return getHighAlertOnlyStatus(rawValue, 57.2, true);
+            default:
+                return "normal";
+        }
+    };
+
 
     useEffect(() => {
         return () => {
@@ -514,7 +586,7 @@ export default function MonitoringDashboard() {
             <div className="max-w-[1920px] mx-auto space-y-6">
                 <div className="space-y-2">
                     <h2 className="text-xl sm:text-2xl font-bold text-brand-blue">{STATIC_ROOM_NAME}</h2>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Last updated: {timestamp}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Last updated: {lastUpdatedLabel}</p>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
@@ -716,7 +788,7 @@ export default function MonitoringDashboard() {
                                         <div className="flex items-center justify-between gap-3">
                                             <h3 className="text-sm sm:text-base font-semibold text-brand-blue">{sensor.name}</h3>
                                             <p className="text-sm sm:text-base font-semibold text-brand-blue text-right">
-                                                {sensor.value}
+                                                {formatSensorValue(sensor, latestReading)}
                                                 <span className="text-gray-400 font-medium ml-1">{sensor.unit}</span>
                                             </p>
                                         </div>
@@ -728,12 +800,12 @@ export default function MonitoringDashboard() {
                                                 unit={sensor.unit}
                                                 minVal={sensor.minVal}
                                                 maxVal={sensor.maxVal}
-                                                readings={displayReadings}
+                                                readings={sensor.name === "Temp RoC" ? tempRocReadings : displayReadings}
                                             />
                                         </div>
 
                                         <div className="flex justify-center">
-                                            <SensorStatusBadge status={sensor.status} />
+                                            <SensorStatusBadge status={getLiveStatus(sensor, latestReading)} />
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -830,7 +902,7 @@ export default function MonitoringDashboard() {
 
                             <div className="text-center space-y-1">
                                 <p className="text-sm text-text-secondary">vs. 30 minutes ago</p>
-                                <p className="text-xs text-text-tertiary">Last updated: {timestamp}</p>
+                                <p className="text-xs text-text-tertiary">Last updated: {lastUpdatedLabel}</p>
                             </div>
                         </CardContent>
                     </Card>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { createChart, IChartApi, ISeriesApi, LineData, LineSeries, UTCTimestamp } from "lightweight-charts";
+import { createChart, IChartApi, ISeriesApi, LineData, LineSeries, UTCTimestamp, LastPriceAnimationMode, LineStyle } from "lightweight-charts";
 import type { Tables } from "@/integrations/supabase/types";
 
 export type SensorReading = Tables<"sensor_readings">;
@@ -40,6 +40,15 @@ export default function SensorReadingGraph({
                 textColor: "#6b7280",
                 attributionLogo: false,
             },
+            localization: {
+                timeFormatter: (time) => new Date(time * 1000).toLocaleTimeString("en-PH", {
+                    timeZone: "Asia/Manila",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                    hour12: false,
+                }),
+            },
             grid: {
                 vertLines: { color: "#f3f4f6" },
                 horzLines: { color: "#f3f4f6" },
@@ -56,6 +65,13 @@ export default function SensorReadingGraph({
                 borderVisible: false,
                 timeVisible: true,
                 secondsVisible: true,
+                tickMarkFormatter: (time) => new Date((time as number) * 1000).toLocaleTimeString("en-PH", {
+                    timeZone: "Asia/Manila",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                    hour12: false,
+                }),
             },
             crosshair: {
                 vertLine: { visible: true },
@@ -68,9 +84,12 @@ export default function SensorReadingGraph({
         const series = chart.addSeries(LineSeries, {
             color,
             lineWidth: 2,
+            lineStyle: LineStyle.Solid,
+
+            lastPriceAnimation: LastPriceAnimationMode.Continuous,
             crosshairMarkerVisible: true,
             priceLineVisible: false,
-            lastValueVisible: true,
+            lastValueVisible: false,
             autoscaleInfoProvider: (original) => {
                 const res = original();
 
