@@ -3,9 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 import PageLayout from "@/components/PageLayout";
 import { SensorStatusBadge, SensorStatusType } from "@/components/SensorStatusBadge";
+import { useSensor } from "@/components/SupabaseProvider";
+import SensorReadingGraph, { SensorReading } from "@/components/SensorReadingGraph";
 import TrendBadge from "@/components/TrendBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
 import {
     AlertTriangle,
     ChevronLeft,
@@ -23,22 +33,46 @@ type SensorDisplayData = {
     name: string;
     value: string;
     status: SensorStatusType;
+    dataKey: keyof SensorReading;
+    color: string;
+    unit: string;
+    minVal: number;
+    maxVal: number;
 };
 
 const STATIC_ROOM_NAME = "Testing Room";
 
 type DetectionResultLabel = "Normal" | "Warning" | "High Alert";
 
-const STATIC_DETECTION_RESULT: DetectionResultLabel = "Warning";
+const STATIC_DETECTION_RESULT: DetectionResultLabel = "High Alert";
 
 const STATIC_SENSOR_VALUES = {
-    co: 26,
+    co: 60,
     no2: 0,
-    pm25: 100.036,
-    o2: 18.74,
-    tempC: 57.245,
-    temp_roc: 0.1,
+    pm25: 500,
+    o2: 17.9,
+    tempC: 57.3,
+    temp_roc: 3.21,
 };
+
+const MOCK_BASE_TS = Math.floor(Date.now() / 1000) - 95;
+const MOCK_READINGS: SensorReading[] = Array.from({ length: 100 }, (_, index) => {
+    const ts = MOCK_BASE_TS + index * 5;
+    const createdAt = new Date(ts * 1000).toISOString();
+
+    return {
+        id: index + 1,
+        ts,
+        recorded_at: null,
+        gas_co: 22 + index * 0.6,
+        gas_no2: 0.8 + index * 0.05,
+        gas_o2: 20.5 - index * 0.1,
+        temp_c: 48 + index * 0.6,
+        pm25: 70 + index * 4.2,
+        detection_result: null,
+        created_at: createdAt,
+    };
+});
 
 const getHigherIsWorseStatus = (value: number, highAlert: number, warning: number): SensorStatusType => {
     if (value >= highAlert) {
@@ -77,33 +111,63 @@ const tempRoc = STATIC_SENSOR_VALUES.temp_roc;
 const STATIC_SENSORS: SensorDisplayData[] = [
     {
         name: "CO",
-        value: `${STATIC_SENSOR_VALUES.co.toFixed(2)} ppm`,
+        value: `${STATIC_SENSOR_VALUES.co.toFixed(2)}`,
         status: getHigherIsWorseStatus(STATIC_SENSOR_VALUES.co, 60, 25),
+        dataKey: "gas_co",
+        color: "#ef4444",
+        unit: "ppm",
+        minVal: 0,
+        maxVal: 100,
     },
     {
         name: "NO2",
-        value: `${STATIC_SENSOR_VALUES.no2.toFixed(2)} ppm`,
+        value: `${STATIC_SENSOR_VALUES.no2.toFixed(2)}`,
         status: getHigherIsWorseStatus(STATIC_SENSOR_VALUES.no2, 1, 0.2),
+        dataKey: "gas_no2",
+        color: "#f97316",
+        unit: "ppm",
+        minVal: 0,
+        maxVal: 5,
     },
     {
         name: "PM2.5",
-        value: `${STATIC_SENSOR_VALUES.pm25.toFixed()} ug/m3`,
+        value: `${STATIC_SENSOR_VALUES.pm25.toFixed()}`,
         status: getHigherIsWorseStatus(STATIC_SENSOR_VALUES.pm25, 150, 90),
+        dataKey: "pm25",
+        color: "#8b5cf6",
+        unit: "ug/m3",
+        minVal: 0,
+        maxVal: 50,
     },
     {
         name: "O2",
-        value: `${STATIC_SENSOR_VALUES.o2.toFixed(2)}%`,
+        value: `${STATIC_SENSOR_VALUES.o2.toFixed(2)}`,
         status: getLowerIsWorseStatus(STATIC_SENSOR_VALUES.o2, 18, 19),
+        dataKey: "gas_o2",
+        color: "#22c55e",
+        unit: "%",
+        minVal: 10,
+        maxVal: 25,
     },
     {
-        name: "Temp",
-        value: `${STATIC_SENSOR_VALUES.tempC.toFixed(2)} C`,
+        name: "Temperature",
+        value: `${STATIC_SENSOR_VALUES.tempC.toFixed(2)}`,
         status: getHighAlertOnlyStatus(STATIC_SENSOR_VALUES.tempC, 57.2, true),
+        dataKey: "temp_c",
+        color: "#3b82f6",
+        unit: "C",
+        minVal: 20,
+        maxVal: 70,
     },
     {
         name: "Temp RoC",
-        value: `${tempRoc >= 0 ? "+" : ""}${tempRoc.toFixed(2)} C/min`,
+        value: `${tempRoc >= 0 ? "+" : ""}${tempRoc.toFixed(2)}`,
         status: getHighAlertOnlyStatus(tempRoc, 8),
+        dataKey: "temp_c",
+        color: "#06b6d4",
+        unit: "C/min",
+        minVal: 20,
+        maxVal: 70,
     },
 ];
 
@@ -125,7 +189,33 @@ const detectionResultToStatus: Record<DetectionResultLabel, StatusLevel> = {
     "High Alert": "high_alert",
 };
 
+const polarToCartesian = (centerX: number, centerY: number, radius: number, angleInDegrees: number) => {
+    const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180;
+
+    return {
+        x: centerX + radius * Math.cos(angleInRadians),
+        y: centerY + radius * Math.sin(angleInRadians),
+    };
+};
+
+const describeArc = (
+    centerX: number,
+    centerY: number,
+    radius: number,
+    startAngle: number,
+    endAngle: number,
+) => {
+    const start = polarToCartesian(centerX, centerY, radius, endAngle);
+    const end = polarToCartesian(centerX, centerY, radius, startAngle);
+    const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+
+    return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`;
+};
+
+
 export default function MonitoringDashboard() {
+    const { readings } = useSensor();
+    const displayReadings = readings.length > 0 ? readings : MOCK_READINGS;
     const [timestamp, setTimestamp] = useState(new Date().toLocaleString());
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -134,6 +224,169 @@ export default function MonitoringDashboard() {
 
     const detectionStatus = detectionResultToStatus[STATIC_DETECTION_RESULT];
     const currentStatusConfig = statusConfig[detectionStatus];
+    const isElevatedStatus = detectionStatus !== "normal";
+    const confidenceSampleSize = detectionStatus === "high_alert" ? 20 : detectionStatus === "warning" ? 10 : 0;
+    const recentReadings = confidenceSampleSize > 0 ? displayReadings.slice(-confidenceSampleSize) : [];
+    const gaugeNeedleAngle = detectionStatus === "normal" ? -75 : detectionStatus === "warning" ? 0 : 75;
+    const triggerInfo = detectionStatus === "high_alert"
+        ? [
+            {
+                label: "CO",
+                value: `${STATIC_SENSOR_VALUES.co.toFixed(2)} ppm`,
+                threshold: ">= 60 ppm",
+                triggered: STATIC_SENSOR_VALUES.co >= 60,
+            },
+            {
+                label: "NO2",
+                value: `${STATIC_SENSOR_VALUES.no2.toFixed(2)} ppm`,
+                threshold: ">= 1 ppm",
+                triggered: STATIC_SENSOR_VALUES.no2 >= 1,
+            },
+            {
+                label: "PM2.5",
+                value: `${STATIC_SENSOR_VALUES.pm25.toFixed(2)} ug/m3`,
+                threshold: ">= 150 ug/m3",
+                triggered: STATIC_SENSOR_VALUES.pm25 >= 150,
+            },
+            {
+                label: "O2",
+                value: `${STATIC_SENSOR_VALUES.o2.toFixed(2)} %`,
+                threshold: "< 18 %",
+                triggered: STATIC_SENSOR_VALUES.o2 < 18,
+            },
+            {
+                label: "Temperature",
+                value: `${STATIC_SENSOR_VALUES.tempC.toFixed(2)} C`,
+                threshold: "> 57.2 C",
+                triggered: STATIC_SENSOR_VALUES.tempC > 57.2,
+            },
+            {
+                label: "Temp RoC",
+                value: `${tempRoc >= 0 ? "+" : ""}${tempRoc.toFixed(2)} C/min`,
+                threshold: ">= 8 C/min",
+                triggered: tempRoc >= 8,
+            },
+        ]
+        : detectionStatus === "warning"
+            ? [
+                {
+                    label: "CO",
+                    value: `${STATIC_SENSOR_VALUES.co.toFixed(2)} ppm`,
+                    threshold: ">= 25 ppm",
+                    triggered: STATIC_SENSOR_VALUES.co >= 25,
+                },
+                {
+                    label: "NO2",
+                    value: `${STATIC_SENSOR_VALUES.no2.toFixed(2)} ppm`,
+                    threshold: ">= 0.2 ppm",
+                    triggered: STATIC_SENSOR_VALUES.no2 >= 0.2,
+                },
+                {
+                    label: "PM2.5",
+                    value: `${STATIC_SENSOR_VALUES.pm25.toFixed(2)} ug/m3`,
+                    threshold: ">= 90 ug/m3",
+                    triggered: STATIC_SENSOR_VALUES.pm25 >= 90,
+                },
+                {
+                    label: "O2",
+                    value: `${STATIC_SENSOR_VALUES.o2.toFixed(2)} %`,
+                    threshold: "< 19 %",
+                    triggered: STATIC_SENSOR_VALUES.o2 < 19,
+                },
+                {
+                    label: "Temperature",
+                    value: `${STATIC_SENSOR_VALUES.tempC.toFixed(2)} C`,
+                    threshold: "> 57.2 C",
+                    triggered: STATIC_SENSOR_VALUES.tempC > 57.2,
+                },
+                {
+                    label: "Temp RoC",
+                    value: `${tempRoc >= 0 ? "+" : ""}${tempRoc.toFixed(2)} C/min`,
+                    threshold: ">= 8 C/min",
+                    triggered: tempRoc >= 8,
+                },
+            ]
+            : [];
+
+    const triggerInfoPlaceholder = [
+        {
+            label: "CO",
+            value: `${STATIC_SENSOR_VALUES.co.toFixed(2)} ppm`,
+            threshold: ">= 25 ppm",
+            triggered: false,
+        },
+        {
+            label: "NO2",
+            value: `${STATIC_SENSOR_VALUES.no2.toFixed(2)} ppm`,
+            threshold: ">= 0.2 ppm",
+            triggered: false,
+        },
+        {
+            label: "PM2.5",
+            value: `${STATIC_SENSOR_VALUES.pm25.toFixed(2)} ug/m3`,
+            threshold: ">= 90 ug/m3",
+            triggered: false,
+        },
+        {
+            label: "O2",
+            value: `${STATIC_SENSOR_VALUES.o2.toFixed(2)} %`,
+            threshold: "< 19 %",
+            triggered: false,
+        },
+        {
+            label: "Temperature",
+            value: `${STATIC_SENSOR_VALUES.tempC.toFixed(2)} C`,
+            threshold: "> 57.2 C",
+            triggered: false,
+        },
+        {
+            label: "Temp RoC",
+            value: `${tempRoc >= 0 ? "+" : ""}${tempRoc.toFixed(2)} C/min`,
+            threshold: ">= 8 C/min",
+            triggered: false,
+        },
+    ];
+
+    const triggerInfoLayout = triggerInfo.length > 0 ? triggerInfo : triggerInfoPlaceholder;
+
+    const isReadingTriggered = (reading: SensorReading) => {
+        if (detectionStatus === "normal") {
+            return false;
+        }
+
+        const co = typeof reading.gas_co === "number" ? reading.gas_co : null;
+        const no2 = typeof reading.gas_no2 === "number" ? reading.gas_no2 : null;
+        const pm25 = typeof reading.pm25 === "number" ? reading.pm25 : null;
+        const o2 = typeof reading.gas_o2 === "number" ? reading.gas_o2 : null;
+        const temp = typeof reading.temp_c === "number" ? reading.temp_c : null;
+
+        if (detectionStatus === "high_alert") {
+            return (
+                (co !== null && co >= 60) ||
+                (no2 !== null && no2 >= 1) ||
+                (pm25 !== null && pm25 >= 150) ||
+                (o2 !== null && o2 < 18) ||
+                (temp !== null && temp > 57.2)
+            );
+        }
+
+        return (
+            (co !== null && co >= 25) ||
+            (no2 !== null && no2 >= 0.2) ||
+            (pm25 !== null && pm25 >= 90) ||
+            (o2 !== null && o2 < 19) ||
+            (temp !== null && temp > 57.2)
+        );
+    };
+
+    const triggeredSamplesCount = recentReadings.reduce((count, reading) =>
+        count + (isReadingTriggered(reading) ? 1 : 0),
+        0,
+    );
+    const confidenceLabel = confidenceSampleSize > 0
+        ? `${triggeredSamplesCount}/${confidenceSampleSize}`
+        : "—";
+
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -259,114 +512,235 @@ export default function MonitoringDashboard() {
     return (
         <PageLayout>
             <div className="max-w-[1920px] mx-auto space-y-6">
-                <div className="mb-4 sm:mb-6">
+                <div className="space-y-2">
                     <h2 className="text-xl sm:text-2xl font-bold text-brand-blue">{STATIC_ROOM_NAME}</h2>
-                    <p className="text-xs sm:text-sm text-muted-foreground mt-2">Last updated: {timestamp}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Last updated: {timestamp}</p>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    <div className="lg:col-span-8">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-lg font-bold text-brand-blue">Sensor Readings</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {STATIC_SENSORS.map((sensor) => (
-                                        <Card
-                                            key={sensor.name}
-                                        // className={
-                                        //     sensor.status === "high_alert"
-                                        //         ? "border-red-300 ring-2 ring-red-200 shadow-[0_0_20px_rgba(239,68,68,0.35)] motion-safe:animate-pulse"
-                                        //         : sensor.status === "warning"
-                                        //             ? "border-amber-300 ring-2 ring-amber-200 shadow-[0_0_16px_rgba(245,158,11,0.28)] motion-safe:animate-pulse"
-                                        //             : ""
-                                        // }
-                                        >
-                                            <CardContent className="p-4 space-y-3">
-                                                <h3 className="text-sm sm:text-base font-semibold text-brand-blue">{sensor.name}</h3>
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                    <Card className="lg:col-span-1 h-full flex flex-col">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base font-bold text-brand-blue">Current Status</CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex flex-1 flex-col items-center justify-center gap-1 text-center">
+                            <svg
+                                viewBox="0 0 260 135"
+                                className="w-full"
+                                aria-label="Detection status gauge"
+                            >
+                                <path
+                                    d={describeArc(130, 108, 95, -90, -30)}
+                                    stroke="#22c55e"
+                                    strokeWidth="18"
+                                    fill="none"
+                                    strokeLinecap="round"
+                                />
+                                <path
+                                    d={describeArc(130, 108, 95, -30, 30)}
+                                    stroke="#f59e0b"
+                                    strokeWidth="18"
+                                    fill="none"
+                                    strokeLinecap="round"
+                                />
+                                <path
+                                    d={describeArc(130, 108, 95, 30, 90)}
+                                    stroke="#ef4444"
+                                    strokeWidth="18"
+                                    fill="none"
+                                    strokeLinecap="round"
+                                />
 
-                                                <div className="text-center py-2">
-                                                    <span className="text-2xl sm:text-3xl font-bold text-brand-blue">{sensor.value}</span>
-                                                </div>
+                                <g
+                                    className="transition-transform duration-700 ease-in-out"
+                                    style={{
+                                        transform: `rotate(${gaugeNeedleAngle}deg)`,
+                                        transformOrigin: "130px 108px",
+                                    }}
+                                >
+                                    <path
+                                        d="M 130 54 L 120 108 L 140 108 Z"
+                                        fill="#000000"
+                                    />
+                                </g>
+                                <circle cx="130" cy="108" r="10" fill="#000000" />
+                                <circle cx="130" cy="108" r="5" fill="hsl(var(--card))" />
+                            </svg>
 
-                                                <div className="flex justify-center">
-                                                    <SensorStatusBadge status={sensor.status} />
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
+                            <p
+                                className={`text-3xl font-bold ${isElevatedStatus ? "motion-safe:animate-pulse" : ""}`}
+                                style={{ color: currentStatusConfig.color }}
+                            >
+                                {STATIC_DETECTION_RESULT.toUpperCase()}
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card className={`${isElevatedStatus ? "border-amber-200" : "border-gray-200"} lg:col-span-3 h-full flex flex-col`}>
+                        <CardHeader className="pb-2">
+                            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                                <CardTitle className="text-base font-bold text-brand-blue">Trigger Information</CardTitle>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Sensor Trigger Information
+                                </p>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="flex-1 grid grid-cols-1 gap-4 lg:grid-cols-[220px_1fr]">
+                            <div className="h-full lg:pr-4 flex flex-col justify-center gap-4">
+                                <div>
+                                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Triggered At</p>
+                                    <p className="text-base font-semibold text-brand-blue">Apr 28, 2026 · 09:41 AM</p>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    </div>
 
-                    <div className="lg:col-span-4">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-lg font-bold text-brand-blue">Detection Result</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="flex flex-col items-center">
-                                    <div className="relative w-40 h-40">
-                                        <svg className="transform -rotate-90 w-40 h-40">
-                                            <defs>
-                                                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                                                    <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
-                                                    <feFlood floodColor={currentStatusConfig.color} floodOpacity="0.3" result="color" />
-                                                    <feComposite in="color" in2="blur" operator="in" result="shadow" />
-                                                    <feMerge>
-                                                        <feMergeNode in="shadow" />
-                                                        <feMergeNode in="SourceGraphic" />
-                                                    </feMerge>
-                                                </filter>
-                                            </defs>
+                                <div>
+                                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Confidence</p>
+                                    <p className="text-2xl font-bold text-brand-blue">{confidenceLabel}</p>
+                                </div>
 
-                                            <circle cx="80" cy="80" r="70" stroke="#E5E7EB" strokeWidth="12" fill="none" />
-                                            <circle
-                                                cx="80"
-                                                cy="80"
-                                                r="70"
-                                                stroke={currentStatusConfig.color}
-                                                strokeWidth="12"
-                                                fill="none"
-                                                strokeDasharray={440}
-                                                strokeDashoffset={
-                                                    detectionStatus === "normal" ? 293 : detectionStatus === "warning" ? 147 : 0
-                                                }
-                                                strokeLinecap="round"
-                                                className="transition-all duration-700 ease-in-out"
-                                                filter="url(#glow)"
-                                            />
-                                        </svg>
+                                <div>
+                                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Occupants</p>
+                                    <p className="text-2xl font-bold text-brand-blue">10</p>
+                                </div>
 
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <Dialog>
+                                        <DialogTrigger asChild>
+                                            <Button variant="outline" className="w-full" disabled={!isElevatedStatus}>
+                                                View Details
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="max-w-3xl">
+                                            <DialogHeader>
+                                                <DialogTitle>Trigger Details</DialogTitle>
+                                                <DialogDescription>
+                                                    Confidence is based on the last {confidenceSampleSize || 0} readings. The system
+                                                    flagged {triggeredSamplesCount} of them as threshold breaches.
+                                                </DialogDescription>
+                                            </DialogHeader>
+
+                                            <div className="space-y-4">
+                                                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                                                    <p className="text-sm text-gray-600">
+                                                        Confidence: <span className="font-semibold text-brand-blue">{confidenceLabel}</span>
+                                                    </p>
+                                                </div>
+
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-sm">
+                                                        <thead className="text-xs uppercase text-muted-foreground border-b">
+                                                            <tr>
+                                                                <th className="py-2 text-left">Time</th>
+                                                                <th className="py-2 text-left">CO (ppm)</th>
+                                                                <th className="py-2 text-left">NO2 (ppm)</th>
+                                                                <th className="py-2 text-left">PM2.5 (ug/m3)</th>
+                                                                <th className="py-2 text-left">O2 (%)</th>
+                                                                <th className="py-2 text-left">Temp (C)</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {recentReadings.length > 0 ? (
+                                                                recentReadings.map((reading) => (
+                                                                    <tr key={reading.ts} className="border-b last:border-b-0">
+                                                                        <td className="py-2">
+                                                                            {new Date(reading.ts * 1000).toLocaleTimeString()}
+                                                                        </td>
+                                                                        <td className="py-2">{reading.gas_co?.toFixed(2) ?? "—"}</td>
+                                                                        <td className="py-2">{reading.gas_no2?.toFixed(2) ?? "—"}</td>
+                                                                        <td className="py-2">{reading.pm25?.toFixed(2) ?? "—"}</td>
+                                                                        <td className="py-2">{reading.gas_o2?.toFixed(2) ?? "—"}</td>
+                                                                        <td className="py-2">{reading.temp_c?.toFixed(2) ?? "—"}</td>
+                                                                    </tr>
+                                                                ))
+                                                            ) : (
+                                                                <tr>
+                                                                    <td className="py-4 text-center text-muted-foreground" colSpan={6}>
+                                                                        No recent readings available.
+                                                                    </td>
+                                                                </tr>
+                                                            )}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </DialogContent>
+                                    </Dialog>
+
+                                    <Button variant="outline" className="w-full">
+                                        View Occupancy
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <div className="lg:border-l lg:border-gray-200 lg:pl-4">
+                                <div className="relative">
+                                    {!isElevatedStatus && (
+                                        <p className="absolute left-0 top-0 text-sm text-muted-foreground">
+                                            All sensors are within normal thresholds.
+                                        </p>
+                                    )}
+
+                                    <div
+                                        className={`grid grid-cols-1 sm:grid-cols-2 gap-2 ${isElevatedStatus ? "" : "opacity-0 pointer-events-none"}`}
+                                        aria-hidden={!isElevatedStatus}
+                                    >
+                                        {triggerInfoLayout.map((trigger) => (
                                             <div
-                                                className="w-3 h-3 rounded-full mb-2 animate-pulse"
-                                                style={{ backgroundColor: currentStatusConfig.color }}
-                                            />
-                                            <span
-                                                className="text-xl font-bold text-center px-2"
-                                                style={{ color: currentStatusConfig.color }}
+                                                key={trigger.label}
+                                                className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 ${trigger.triggered ? "border-amber-200 bg-amber-50" : "border-gray-200"
+                                                    }`}
                                             >
-                                                {STATIC_DETECTION_RESULT}
-                                            </span>
-                                        </div>
+                                                <div>
+                                                    <p className="text-sm font-semibold text-brand-blue">{trigger.label}</p>
+                                                    <p className="text-xs text-muted-foreground">Threshold: {trigger.threshold}</p>
+                                                </div>
+                                                <p className="text-sm font-semibold" style={{ color: currentStatusConfig.color }}>
+                                                    {trigger.value}
+                                                </p>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
-
-                                <p className="text-sm text-center text-text-primary leading-relaxed">
-                                    As of <span className="font-semibold">{timestamp}</span>, the
-                                    <span className="font-semibold"> {STATIC_ROOM_NAME}</span> detection status is
-                                    <span className="font-bold" style={{ color: currentStatusConfig.color }}>
-                                        {` ${STATIC_DETECTION_RESULT}`}
-                                    </span>
-                                    .
-                                </p>
-                            </CardContent>
-                        </Card>
-                    </div>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg font-bold text-brand-blue">Sensor Readings</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {STATIC_SENSORS.map((sensor) => (
+                                <Card key={sensor.name}>
+                                    <CardContent className="p-4 space-y-3">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <h3 className="text-sm sm:text-base font-semibold text-brand-blue">{sensor.name}</h3>
+                                            <p className="text-sm sm:text-base font-semibold text-brand-blue text-right">
+                                                {sensor.value}
+                                                <span className="text-gray-400 font-medium ml-1">{sensor.unit}</span>
+                                            </p>
+                                        </div>
+
+                                        <div className="pt-2 border-t border-gray-100">
+                                            <SensorReadingGraph
+                                                dataKey={sensor.dataKey}
+                                                color={sensor.color}
+                                                unit={sensor.unit}
+                                                minVal={sensor.minVal}
+                                                maxVal={sensor.maxVal}
+                                                readings={displayReadings}
+                                            />
+                                        </div>
+
+                                        <div className="flex justify-center">
+                                            <SensorStatusBadge status={sensor.status} />
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
 
                 <div className="pt-2">
                     <div className="border-t border-border" />
