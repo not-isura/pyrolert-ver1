@@ -13,6 +13,7 @@ interface SensorReadingGraphProps {
     minVal: number;
     maxVal: number;
     readings: SensorReading[];
+    height?: number;
 }
 
 export default function SensorReadingGraph({
@@ -22,6 +23,7 @@ export default function SensorReadingGraph({
     minVal,
     maxVal,
     readings,
+    height = 150,
 }: SensorReadingGraphProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
@@ -34,7 +36,7 @@ export default function SensorReadingGraph({
 
         const chart = createChart(containerRef.current, {
             width: containerRef.current.clientWidth,
-            height: 150,
+            height,
             layout: {
                 background: { color: "transparent" },
                 textColor: "#6b7280",

@@ -24,10 +24,6 @@ import {
     CheckCircle,
     ChevronLeft,
     ChevronRight,
-    Download,
-    Pause,
-    RotateCcw,
-    Users,
     X,
 } from "lucide-react";
 
@@ -103,11 +99,29 @@ const describeArc = (centerX: number, centerY: number, radius: number, startAngl
     return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`;
 };
 
+const MOCK_BASE_TS = Math.floor(Date.now() / 1000) - 99;
+
+const MOCK_READINGS: SensorReading[] = Array.from({ length: 100 }, (_, i) => {
+    const ts = MOCK_BASE_TS + i;
+    return {
+        id: i + 1,
+        ts,
+        recorded_at: null,
+        gas_co:  22 + Math.sin(i * 0.15) * 8 + i * 0.3,
+        gas_no2: 0.5 + Math.sin(i * 0.2) * 0.25 + i * 0.003,
+        gas_o2:  20.5 - i * 0.02 + Math.cos(i * 0.1) * 0.3,
+        temp_c:  48 + Math.sin(i * 0.1) * 3 + i * 0.12,
+        pm25:    70 + Math.cos(i * 0.12) * 20 + i * 2,
+        detection_result: null,
+        created_at: new Date(ts * 1000).toISOString(),
+    };
+});
+
 export default function MonitoringDashboard() {
     const { readings } = useSensor();
     const { activeAlert, alertHistory, resolveAlert, archiveAlert } = useAlert();
 
-    const displayReadings = readings;
+    const displayReadings = readings.length > 0 ? readings : MOCK_READINGS;
     const latestReading = displayReadings.length > 0 ? displayReadings[displayReadings.length - 1] : null;
 
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -274,325 +288,287 @@ export default function MonitoringDashboard() {
 
     return (
         <PageLayout>
-            <div className="max-w-[1920px] mx-auto space-y-6">
-                <div className="space-y-2">
-                    <h2 className="text-xl sm:text-2xl font-bold text-brand-blue">{STATIC_ROOM_NAME}</h2>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Last updated: {lastUpdatedLabel}</p>
+            <div className="flex flex-col gap-3">
+                {/* ── Page header ───────────────────────────────────────────────── */}
+                <div>
+                    <h2 className="text-xl font-bold text-brand-blue">{STATIC_ROOM_NAME}</h2>
+                    <p className="text-xs text-muted-foreground">Last updated: {lastUpdatedLabel}</p>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                    {/* ── Current Status Card ─────────────────────────────────────── */}
-                    <Card className="lg:col-span-1 h-full flex flex-col" style={{ minHeight: 0 }}>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-base font-bold text-brand-blue">Current Status</CardTitle>
-                        </CardHeader>
-                        <CardContent className="flex flex-1 flex-col items-center justify-center gap-1 text-center">
-                            <svg viewBox="0 0 260 135" className="w-full" aria-label="Detection status gauge">
-                                <path d={describeArc(130, 108, 95, -90, -30)} stroke="#22c55e" strokeWidth="18" fill="none" strokeLinecap="round" />
-                                <path d={describeArc(130, 108, 95, -30,  30)} stroke="#f59e0b" strokeWidth="18" fill="none" strokeLinecap="round" />
-                                <path d={describeArc(130, 108, 95,  30,  90)} stroke="#ef4444" strokeWidth="18" fill="none" strokeLinecap="round" />
-                                <g
-                                    className="transition-transform duration-700 ease-in-out"
-                                    style={{ transform: `rotate(${gaugeNeedleAngle}deg)`, transformOrigin: "130px 108px" }}
+                {/* ── Main layout: sidebar + sensor readings ─────────────────────── */}
+                <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-4">
+
+                    {/* ── Left sidebar ─────────────────────────────────────────── */}
+                    <div className="flex flex-col gap-3 h-full">
+
+                        {/* Current Status */}
+                        <Card>
+                            <CardHeader className="pb-1 pt-3 px-4">
+                                <CardTitle className="text-sm font-bold text-brand-blue">Current Status</CardTitle>
+                            </CardHeader>
+                            <CardContent className="px-4 pb-3 flex flex-col items-center gap-0">
+                                <svg viewBox="0 0 260 135" className="w-48" aria-label="Detection status gauge">
+                                    <path d={describeArc(130, 108, 95, -90, -30)} stroke="#22c55e" strokeWidth="18" fill="none" strokeLinecap="round" />
+                                    <path d={describeArc(130, 108, 95, -30,  30)} stroke="#f59e0b" strokeWidth="18" fill="none" strokeLinecap="round" />
+                                    <path d={describeArc(130, 108, 95,  30,  90)} stroke="#ef4444" strokeWidth="18" fill="none" strokeLinecap="round" />
+                                    <g
+                                        className="transition-transform duration-700 ease-in-out"
+                                        style={{ transform: `rotate(${gaugeNeedleAngle}deg)`, transformOrigin: "130px 108px" }}
+                                    >
+                                        <path d="M 130 54 L 120 108 L 140 108 Z" fill="#000000" />
+                                    </g>
+                                    <circle cx="130" cy="108" r="10" fill="#000000" />
+                                    <circle cx="130" cy="108" r="5"  fill="hsl(var(--card))" />
+                                </svg>
+                                <p
+                                    className={`text-2xl font-bold -mt-2 ${isElevatedStatus ? "motion-safe:animate-pulse" : ""}`}
+                                    style={{ color: currentStatusConfig.color }}
                                 >
-                                    <path d="M 130 54 L 120 108 L 140 108 Z" fill="#000000" />
-                                </g>
-                                <circle cx="130" cy="108" r="10" fill="#000000" />
-                                <circle cx="130" cy="108" r="5"  fill="hsl(var(--card))" />
-                            </svg>
-                            <p
-                                className={`text-3xl font-bold ${isElevatedStatus ? "motion-safe:animate-pulse" : ""}`}
-                                style={{ color: currentStatusConfig.color }}
-                            >
-                                {currentStatusConfig.label.toUpperCase()}
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    {/* ── Trigger Information Card ─────────────────────────────────── */}
-                    <Card className={`${isElevatedStatus ? "border-amber-200" : "border-gray-200"} lg:col-span-1 h-full flex flex-col`}>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-base font-bold text-brand-blue">Trigger Information</CardTitle>
-                        </CardHeader>
-
-                        {!activeAlert ? (
-                            <CardContent className="flex flex-1 items-center justify-center">
-                                <p className="text-sm text-muted-foreground">No active alerts.</p>
+                                    {currentStatusConfig.label.toUpperCase()}
+                                </p>
                             </CardContent>
-                        ) : (
-                            <CardContent className="flex flex-col gap-4">
-                                {/* Metadata row */}
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                    <div>
-                                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Triggered At</p>
-                                        <p className="text-sm font-semibold text-brand-blue">
-                                            {new Date(activeAlert.triggered_at).toLocaleString()}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Last Updated</p>
-                                        <p className="text-sm font-semibold text-brand-blue">
-                                            {new Date(activeAlert.last_updated).toLocaleString()}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Status</p>
-                                        <span className={`inline-block rounded-full px-3 py-0.5 text-xs font-semibold ${alertStatusBadge[activeAlert.status]?.className ?? ""}`}>
-                                            {alertStatusBadge[activeAlert.status]?.label ?? activeAlert.status}
-                                        </span>
-                                    </div>
-                                </div>
+                        </Card>
 
-                                {/* Action buttons */}
-                                <div className="grid grid-cols-1 gap-2">
-                                    {/* View Report — combines sensor trigger info + state history */}
-                                    <Dialog>
-                                        <DialogTrigger asChild>
-                                            <Button variant="outline" className="w-full">
-                                                View Report
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                                            <DialogHeader>
-                                                <DialogTitle>Alert Report</DialogTitle>
-                                                <DialogDescription>
-                                                    Episode started {new Date(activeAlert.triggered_at).toLocaleString()}.
-                                                </DialogDescription>
-                                            </DialogHeader>
+                        {/* Trigger Information */}
+                        <Card className={isElevatedStatus ? "border-amber-200" : ""}>
+                            <CardHeader className="pb-1 pt-3 px-4">
+                                <CardTitle className="text-sm font-bold text-brand-blue">Trigger Information</CardTitle>
+                            </CardHeader>
 
-                                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">
-                                                Sensor Trigger Information
+                            {!activeAlert ? (
+                                <CardContent className="px-4 pb-3">
+                                    <p className="text-sm text-muted-foreground">No active alerts.</p>
+                                </CardContent>
+                            ) : (
+                                <CardContent className="px-4 pb-3 flex flex-col gap-3">
+                                    {/* Metadata */}
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-xs text-muted-foreground">Triggered At</p>
+                                            <p className="text-xs font-semibold text-brand-blue">
+                                                {new Date(activeAlert.triggered_at).toLocaleString()}
                                             </p>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                {triggerItems.map((trigger) => (
-                                                    <div
-                                                        key={trigger.label}
-                                                        className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 ${
-                                                            trigger.triggered ? "border-amber-200 bg-amber-50" : "border-gray-200"
-                                                        }`}
-                                                    >
-                                                        <div>
-                                                            <p className="text-sm font-semibold text-brand-blue">{trigger.label}</p>
-                                                            <p className="text-xs text-muted-foreground">Threshold: {trigger.threshold}</p>
-                                                        </div>
-                                                        <p className="text-sm font-semibold" style={{ color: currentStatusConfig.color }}>
-                                                            {trigger.value}
-                                                        </p>
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            <div className="border-t border-gray-100 my-2" />
-
-                                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                                Alert State History
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-xs text-muted-foreground">Last Updated</p>
+                                            <p className="text-xs font-semibold text-brand-blue">
+                                                {new Date(activeAlert.last_updated).toLocaleString()}
                                             </p>
-                                            <AlertStateHistoryGraph history={alertHistory} />
-                                            <div className="mt-2 space-y-1">
-                                                {alertHistory.map((entry) => (
-                                                    <div key={entry.id} className="flex items-center gap-3 text-sm">
-                                                        <span className="text-muted-foreground w-44 shrink-0">
-                                                            {new Date(entry.timestamp).toLocaleString()}
-                                                        </span>
-                                                        <span
-                                                            className="font-semibold"
-                                                            style={{ color: statusConfig[entry.state].color }}
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-xs text-muted-foreground">Status</p>
+                                            <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${alertStatusBadge[activeAlert.status]?.className ?? ""}`}>
+                                                {alertStatusBadge[activeAlert.status]?.label ?? activeAlert.status}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Buttons */}
+                                    <div className="flex items-center gap-2">
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <Button variant="outline" size="sm" className="flex-1">
+                                                    View Report
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                                                <DialogHeader>
+                                                    <DialogTitle>Alert Report</DialogTitle>
+                                                    <DialogDescription>
+                                                        Episode started {new Date(activeAlert.triggered_at).toLocaleString()}.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">
+                                                    Sensor Trigger Information
+                                                </p>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                    {triggerItems.map((trigger) => (
+                                                        <div
+                                                            key={trigger.label}
+                                                            className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 ${trigger.triggered ? "border-amber-200 bg-amber-50" : "border-gray-200"}`}
                                                         >
-                                                            {statusConfig[entry.state].label}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </DialogContent>
-                                    </Dialog>
+                                                            <div>
+                                                                <p className="text-sm font-semibold text-brand-blue">{trigger.label}</p>
+                                                                <p className="text-xs text-muted-foreground">Threshold: {trigger.threshold}</p>
+                                                            </div>
+                                                            <p className="text-sm font-semibold" style={{ color: currentStatusConfig.color }}>
+                                                                {trigger.value}
+                                                            </p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <div className="border-t border-gray-100 my-2" />
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                                    Alert State History
+                                                </p>
+                                                <AlertStateHistoryGraph history={alertHistory} />
+                                                <div className="mt-2 space-y-1">
+                                                    {alertHistory.map((entry) => (
+                                                        <div key={entry.id} className="flex items-center gap-3 text-sm">
+                                                            <span className="text-muted-foreground w-44 shrink-0">
+                                                                {new Date(entry.timestamp).toLocaleString()}
+                                                            </span>
+                                                            <span className="font-semibold" style={{ color: statusConfig[entry.state].color }}>
+                                                                {statusConfig[entry.state].label}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
 
-                                    {/* Resolution buttons */}
-                                    <Button
-                                        variant="outline"
-                                        className="w-full"
-                                        disabled={activeAlert.status !== "active"}
-                                        onClick={() => resolveAlert(activeAlert.id, "resolved")}
-                                    >
-                                        <CheckCircle className="h-4 w-4 mr-2" />
-                                        Mark as Resolved
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        className="w-full"
-                                        disabled={activeAlert.status !== "active"}
-                                        onClick={() => resolveAlert(activeAlert.id, "false_alarm")}
-                                    >
-                                        <AlertTriangle className="h-4 w-4 mr-2" />
-                                        Mark as False Alarm
-                                    </Button>
-                                </div>
+                                                {activeAlert.status === "active" && (
+                                                    <>
+                                                        <div className="border-t border-gray-100 my-2" />
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="w-full"
+                                                                onClick={() => resolveAlert(activeAlert.id, "resolved")}
+                                                            >
+                                                                <CheckCircle className="h-3.5 w-3.5 mr-2" />
+                                                                Mark as Resolved
+                                                            </Button>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="w-full"
+                                                                onClick={() => resolveAlert(activeAlert.id, "false_alarm")}
+                                                            >
+                                                                <AlertTriangle className="h-3.5 w-3.5 mr-2" />
+                                                                Mark as False Alarm
+                                                            </Button>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </DialogContent>
+                                        </Dialog>
 
-                                {/* Archive — only shown once resolved/false alarm */}
-                                {activeAlert.status !== "active" && (
-                                    <Button
-                                        variant="outline"
-                                        className="w-full text-gray-500"
-                                        onClick={() => archiveAlert(activeAlert.id)}
-                                    >
-                                        <Archive className="h-4 w-4 mr-2" />
-                                        Archive &amp; Close
-                                    </Button>
-                                )}
-                            </CardContent>
-                        )}
-                    </Card>
-
-                    {/* ── Camera Snapshots ─────────────────────────────────────────── */}
-                    <Card className="lg:col-span-2 h-full flex flex-col">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-base font-bold text-brand-blue">Camera Snapshots</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-[160px_1fr] gap-4 items-center">
-                                {/* Left: Headcount */}
-                                <div className="flex flex-col gap-1">
-                                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Headcount</p>
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="text-4xl font-bold text-brand-blue">18</span>
-                                    </div>
-                                    <TrendBadge value={2} />
-                                    <p className="text-xs text-muted-foreground mt-1">vs. 30 min ago</p>
-                                </div>
-
-                                {/* Right: Snapshot carousel */}
-                                <div
-                                    className="relative cursor-pointer"
-                                    onClick={openFullscreen}
-                                    onTouchStart={handleTouchStart}
-                                    onTouchMove={handleTouchMove}
-                                    onTouchEnd={handleTouchEnd}
-                                >
-                                    <div className="aspect-video bg-muted rounded-lg flex items-center justify-center hover:bg-muted/80 transition-colors">
-                                        <p className="text-xs text-muted-foreground">
-                                            {STATIC_CAMERA_SNAPSHOTS[currentImageIndex].label}
-                                        </p>
-                                    </div>
-
-                                    {STATIC_CAMERA_SNAPSHOTS.length > 1 && (
-                                        <>
+                                        {activeAlert.status !== "active" && (
                                             <Button
                                                 variant="outline"
-                                                size="icon"
-                                                onClick={(e) => { e.stopPropagation(); handlePrevImage(); }}
-                                                className="absolute left-1 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white h-7 w-7"
+                                                size="sm"
+                                                className="text-gray-500"
+                                                onClick={() => archiveAlert(activeAlert.id)}
                                             >
-                                                <ChevronLeft className="h-4 w-4" />
+                                                <Archive className="h-3.5 w-3.5 mr-2" />
+                                                Archive
                                             </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                onClick={(e) => { e.stopPropagation(); handleNextImage(); }}
-                                                className="absolute right-1 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white h-7 w-7"
-                                            >
-                                                <ChevronRight className="h-4 w-4" />
-                                            </Button>
-                                        </>
-                                    )}
-
-                                    <div className="flex justify-center gap-1.5 mt-2">
-                                        {STATIC_CAMERA_SNAPSHOTS.map((snapshot, index) => (
-                                            <button
-                                                key={snapshot.id}
-                                                onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(index); }}
-                                                className="w-1.5 h-1.5 rounded-full transition-all"
-                                                style={{ backgroundColor: index === currentImageIndex ? "hsl(var(--brand-blue))" : "#CBD5E1" }}
-                                            />
-                                        ))}
+                                        )}
                                     </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                                </CardContent>
+                            )}
+                        </Card>
 
-                {/* ── Sensor Readings ──────────────────────────────────────────────── */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg font-bold text-brand-blue">Sensor Readings</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {STATIC_SENSORS.map((sensor) => (
-                                <Card key={sensor.name}>
-                                    <CardContent className="p-4 space-y-3">
-                                        <div className="flex items-center justify-between gap-3">
-                                            <h3 className="text-sm sm:text-base font-semibold text-brand-blue">{sensor.name}</h3>
-                                            <p className="text-sm sm:text-base font-semibold text-brand-blue text-right">
-                                                {formatSensorValue(sensor, latestReading)}
-                                                <span className="text-gray-400 font-medium ml-1">{sensor.unit}</span>
+                        {/* Camera Snapshots */}
+                        <Card className={activeAlert ? "flex-1 flex flex-col" : ""}>
+                            <CardHeader className="pb-1 pt-3 px-4">
+                                <CardTitle className="text-sm font-bold text-brand-blue">Camera Snapshots</CardTitle>
+                            </CardHeader>
+                            {!activeAlert ? (
+                                <CardContent className="px-4 pb-3">
+                                    <p className="text-sm text-muted-foreground">No active alerts.</p>
+                                </CardContent>
+                            ) : (
+                                <CardContent className="px-4 pb-3 flex flex-col gap-3 flex-1">
+                                    {/* Headcount row */}
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm text-muted-foreground">Headcount</p>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xl font-bold text-brand-blue">18</span>
+                                            <TrendBadge value={2} />
+                                        </div>
+                                    </div>
+
+                                    {/* Snapshot carousel */}
+                                    <div
+                                        className="relative cursor-pointer"
+                                        onClick={openFullscreen}
+                                        onTouchStart={handleTouchStart}
+                                        onTouchMove={handleTouchMove}
+                                        onTouchEnd={handleTouchEnd}
+                                    >
+                                        <div className="relative aspect-video bg-muted rounded-lg flex items-center justify-center hover:bg-muted/80 transition-colors overflow-hidden">
+                                            <p className="text-xs text-muted-foreground text-center px-1">
+                                                {STATIC_CAMERA_SNAPSHOTS[currentImageIndex].label}
                                             </p>
+                                            <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-2 py-1 rounded-b-lg">
+                                                <p className="text-xs text-white/90">
+                                                    {STATIC_CAMERA_SNAPSHOTS[currentImageIndex].label}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div className="pt-2 border-t border-gray-100">
-                                            <SensorReadingGraph
-                                                dataKey={sensor.dataKey}
-                                                color={sensor.color}
-                                                unit={sensor.unit}
-                                                minVal={sensor.minVal}
-                                                maxVal={sensor.maxVal}
-                                                readings={sensor.name === "Temp RoC" ? tempRocReadings : displayReadings}
-                                            />
+                                        {STATIC_CAMERA_SNAPSHOTS.length > 1 && (
+                                            <>
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    onClick={(e) => { e.stopPropagation(); handlePrevImage(); }}
+                                                    className="absolute left-1 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white h-7 w-7"
+                                                >
+                                                    <ChevronLeft className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    onClick={(e) => { e.stopPropagation(); handleNextImage(); }}
+                                                    className="absolute right-1 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white h-7 w-7"
+                                                >
+                                                    <ChevronRight className="h-4 w-4" />
+                                                </Button>
+                                            </>
+                                        )}
+                                        <div className="flex justify-center gap-1.5 mt-2">
+                                            {STATIC_CAMERA_SNAPSHOTS.map((snapshot, index) => (
+                                                <button
+                                                    key={snapshot.id}
+                                                    onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(index); }}
+                                                    className="w-1.5 h-1.5 rounded-full transition-all"
+                                                    style={{ backgroundColor: index === currentImageIndex ? "hsl(var(--brand-blue))" : "#CBD5E1" }}
+                                                />
+                                            ))}
                                         </div>
-                                        <div className="flex justify-center">
-                                            <SensorStatusBadge status={getLiveStatus(sensor, latestReading)} />
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
+                                    </div>
+                                </CardContent>
+                            )}
 
-                <div className="pt-2">
-                    <div className="border-t border-border" />
-                    <p className="text-xs sm:text-sm text-muted-foreground mt-3">
-                        Occupants and Quick Actions
-                    </p>
-                </div>
+                        </Card>
+                    </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                    {/* ── Occupants ────────────────────────────────────────────────── */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg font-bold text-brand-blue">Occupants</CardTitle>
+                    {/* ── Sensor Readings (2-col grid) ──────────────────────────── */}
+                    <Card className="flex flex-col">
+                        <CardHeader className="pb-1 pt-3 px-4">
+                            <CardTitle className="text-sm font-bold text-brand-blue">Sensor Readings</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center justify-center gap-4">
-                                <div className="flex items-baseline gap-2">
-                                    <Users className="h-8 w-8 text-brand-blue" />
-                                    <span className="text-5xl font-bold text-brand-blue">18</span>
-                                </div>
-                                <TrendBadge value={2} />
+                        <CardContent className="px-4 pb-4 flex-1 flex items-center">
+                            <div className="grid grid-cols-2 gap-3 w-full">
+                                {STATIC_SENSORS.map((sensor) => (
+                                    <Card key={sensor.name}>
+                                        <CardContent className="p-3 space-y-2">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <h3 className="text-sm font-semibold text-brand-blue">{sensor.name}</h3>
+                                                <p className="text-sm font-semibold text-brand-blue">
+                                                    {formatSensorValue(sensor, latestReading)}
+                                                    <span className="text-gray-400 font-medium ml-1 text-xs">{sensor.unit}</span>
+                                                </p>
+                                            </div>
+                                            <div className="border-t border-gray-100 pt-1">
+                                                <SensorReadingGraph
+                                                    dataKey={sensor.dataKey}
+                                                    color={sensor.color}
+                                                    unit={sensor.unit}
+                                                    minVal={sensor.minVal}
+                                                    maxVal={sensor.maxVal}
+                                                    height={120}
+                                                    readings={sensor.name === "Temp RoC" ? tempRocReadings : displayReadings}
+                                                />
+                                            </div>
+                                            <div className="flex justify-center">
+                                                <SensorStatusBadge status={getLiveStatus(sensor, latestReading)} />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
                             </div>
-                            <div className="text-center space-y-1">
-                                <p className="text-sm text-text-secondary">vs. 30 minutes ago</p>
-                                <p className="text-xs text-text-tertiary">Last updated: {lastUpdatedLabel}</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* ── Quick Actions ────────────────────────────────────────────── */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg font-bold text-brand-blue">Quick Actions</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            <Button variant="outline" className="w-full justify-start">
-                                <Pause className="h-4 w-4 mr-2" />
-                                Pause Monitoring
-                            </Button>
-                            <Button variant="outline" className="w-full justify-start">
-                                <RotateCcw className="h-4 w-4 mr-2" />
-                                Restart the System
-                            </Button>
-                            <Button variant="outline" className="w-full justify-start">
-                                <Download className="h-4 w-4 mr-2" />
-                                Export Event Log
-                            </Button>
                         </CardContent>
                     </Card>
                 </div>
