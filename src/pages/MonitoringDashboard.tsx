@@ -65,7 +65,7 @@ const STATIC_SENSORS: SensorDisplayData[] = [
     { name: "PM2.5",       value: "", status: "normal", dataKey: "pm25",    color: "#8b5cf6", unit: "ug/m3", minVal: 0,  maxVal: 50  },
     { name: "O2",          value: "", status: "normal", dataKey: "gas_o2",  color: "#22c55e", unit: "%",     minVal: 10, maxVal: 25  },
     { name: "Temperature", value: "", status: "normal", dataKey: "temp_c",  color: "#3b82f6", unit: "C",     minVal: 20, maxVal: 70  },
-    { name: "Temp RoC",    value: "", status: "normal", dataKey: "temp_c",  color: "#06b6d4", unit: "C/min", minVal: 20, maxVal: 70  },
+    { name: "Temp RoC",    value: "", status: "normal", dataKey: "temp_roc", color: "#06b6d4", unit: "C/min", minVal: -2, maxVal: 10  },
 ];
 
 const STATIC_CAMERA_SNAPSHOTS = [
@@ -111,6 +111,7 @@ const MOCK_READINGS: SensorReading[] = Array.from({ length: 100 }, (_, i) => {
         gas_no2: 0.5 + Math.sin(i * 0.2) * 0.25 + i * 0.003,
         gas_o2:  20.5 - i * 0.02 + Math.cos(i * 0.1) * 0.3,
         temp_c:  48 + Math.sin(i * 0.1) * 3 + i * 0.12,
+        temp_roc: 0.12 + Math.sin(i * 0.18) * 0.4 + i * 0.005,
         pm25:    70 + Math.cos(i * 0.12) * 20 + i * 2,
         detection_result: null,
         created_at: new Date(ts * 1000).toISOString(),
@@ -140,11 +141,12 @@ export default function MonitoringDashboard() {
 
     // Live sensor values from the latest reading
     const liveValues = {
-        co:    typeof latestReading?.gas_co  === "number" ? latestReading.gas_co  : null,
-        no2:   typeof latestReading?.gas_no2 === "number" ? latestReading.gas_no2 : null,
-        pm25:  typeof latestReading?.pm25    === "number" ? latestReading.pm25    : null,
-        o2:    typeof latestReading?.gas_o2  === "number" ? latestReading.gas_o2  : null,
-        tempC: typeof latestReading?.temp_c  === "number" ? latestReading.temp_c  : null,
+        co:     typeof latestReading?.gas_co   === "number" ? latestReading.gas_co   : null,
+        no2:    typeof latestReading?.gas_no2  === "number" ? latestReading.gas_no2  : null,
+        pm25:   typeof latestReading?.pm25     === "number" ? latestReading.pm25     : null,
+        o2:     typeof latestReading?.gas_o2   === "number" ? latestReading.gas_o2   : null,
+        tempC:  typeof latestReading?.temp_c   === "number" ? latestReading.temp_c   : null,
+        tempRoc: typeof latestReading?.temp_roc === "number" ? latestReading.temp_roc : null,
     };
 
     const highAlertThresholds = [
@@ -152,17 +154,17 @@ export default function MonitoringDashboard() {
         { label: "NO2",         value: liveValues.no2   !== null ? `${liveValues.no2.toFixed(3)} ppm`  : "—", threshold: ">= 1 ppm",    triggered: liveValues.no2   !== null && liveValues.no2   >= 1    },
         { label: "PM2.5",       value: liveValues.pm25  !== null ? `${liveValues.pm25.toFixed(0)} ug/m3` : "—", threshold: ">= 150 ug/m3", triggered: liveValues.pm25 !== null && liveValues.pm25  >= 150  },
         { label: "O2",          value: liveValues.o2    !== null ? `${liveValues.o2.toFixed(2)} %`     : "—", threshold: "< 18 %",      triggered: liveValues.o2    !== null && liveValues.o2    < 18    },
-        { label: "Temperature", value: liveValues.tempC !== null ? `${liveValues.tempC.toFixed(2)} C`  : "—", threshold: "> 57.2 C",    triggered: liveValues.tempC !== null && liveValues.tempC > 57.2  },
-        { label: "Temp RoC",    value: "+0.00 C/min",                                                         threshold: ">= 8 C/min",  triggered: false                                                  },
+        { label: "Temperature", value: liveValues.tempC   !== null ? `${liveValues.tempC.toFixed(2)} C`        : "—", threshold: "> 57.2 C",   triggered: liveValues.tempC   !== null && liveValues.tempC   > 57.2 },
+        { label: "Temp RoC",   value: liveValues.tempRoc !== null ? `${liveValues.tempRoc.toFixed(2)} C/min`  : "—", threshold: ">= 8 C/min", triggered: liveValues.tempRoc !== null && liveValues.tempRoc >= 8   },
     ];
 
     const warningThresholds = [
-        { label: "CO",          value: liveValues.co    !== null ? `${liveValues.co.toFixed(3)} ppm`   : "—", threshold: ">= 25 ppm",  triggered: liveValues.co    !== null && liveValues.co    >= 25   },
-        { label: "NO2",         value: liveValues.no2   !== null ? `${liveValues.no2.toFixed(3)} ppm`  : "—", threshold: ">= 0.2 ppm", triggered: liveValues.no2   !== null && liveValues.no2   >= 0.2  },
-        { label: "PM2.5",       value: liveValues.pm25  !== null ? `${liveValues.pm25.toFixed(0)} ug/m3` : "—", threshold: ">= 90 ug/m3", triggered: liveValues.pm25 !== null && liveValues.pm25 >= 90   },
-        { label: "O2",          value: liveValues.o2    !== null ? `${liveValues.o2.toFixed(2)} %`     : "—", threshold: "< 19 %",     triggered: liveValues.o2    !== null && liveValues.o2    < 19    },
-        { label: "Temperature", value: liveValues.tempC !== null ? `${liveValues.tempC.toFixed(2)} C`  : "—", threshold: "> 57.2 C",   triggered: liveValues.tempC !== null && liveValues.tempC > 57.2  },
-        { label: "Temp RoC",    value: "+0.00 C/min",                                                         threshold: ">= 8 C/min", triggered: false                                                  },
+        { label: "CO",          value: liveValues.co     !== null ? `${liveValues.co.toFixed(3)} ppm`        : "—", threshold: ">= 25 ppm",  triggered: liveValues.co     !== null && liveValues.co     >= 25   },
+        { label: "NO2",         value: liveValues.no2    !== null ? `${liveValues.no2.toFixed(3)} ppm`       : "—", threshold: ">= 0.2 ppm", triggered: liveValues.no2    !== null && liveValues.no2    >= 0.2  },
+        { label: "PM2.5",       value: liveValues.pm25   !== null ? `${liveValues.pm25.toFixed(0)} ug/m3`    : "—", threshold: ">= 90 ug/m3", triggered: liveValues.pm25  !== null && liveValues.pm25   >= 90   },
+        { label: "O2",          value: liveValues.o2     !== null ? `${liveValues.o2.toFixed(2)} %`          : "—", threshold: "< 19 %",     triggered: liveValues.o2     !== null && liveValues.o2     < 19    },
+        { label: "Temperature", value: liveValues.tempC  !== null ? `${liveValues.tempC.toFixed(2)} C`       : "—", threshold: "> 57.2 C",   triggered: liveValues.tempC  !== null && liveValues.tempC  > 57.2  },
+        { label: "Temp RoC",    value: liveValues.tempRoc !== null ? `${liveValues.tempRoc.toFixed(2)} C/min` : "—", threshold: ">= 8 C/min", triggered: liveValues.tempRoc !== null && liveValues.tempRoc >= 8   },
     ];
 
     const triggerItems =
@@ -180,10 +182,7 @@ export default function MonitoringDashboard() {
 
     const lastUpdatedLabel = formatLastUpdated(latestReading);
 
-    const tempRocReadings = displayReadings.map((reading) => ({ ...reading, temp_c: 0 }));
-
     const formatSensorValue = (sensor: SensorDisplayData, reading: SensorReading | null) => {
-        if (sensor.name === "Temp RoC") return "0.00";
         if (!reading) return "—";
         const rawValue = reading[sensor.dataKey];
         if (typeof rawValue !== "number") return "—";
@@ -192,7 +191,6 @@ export default function MonitoringDashboard() {
     };
 
     const getLiveStatus = (sensor: SensorDisplayData, reading: SensorReading | null): SensorStatusType => {
-        if (sensor.name === "Temp RoC") return "normal";
         if (!reading) return "normal";
         const rawValue = reading[sensor.dataKey];
         if (typeof rawValue !== "number") return "normal";
@@ -202,6 +200,7 @@ export default function MonitoringDashboard() {
             case "PM2.5":       return getHigherIsWorseStatus(rawValue, 150, 90);
             case "O2":          return getLowerIsWorseStatus(rawValue, 18, 19);
             case "Temperature": return getHighAlertOnlyStatus(rawValue, 57.2, true);
+            case "Temp RoC":    return getHighAlertOnlyStatus(rawValue, 8);
             default:            return "normal";
         }
     };
@@ -559,7 +558,7 @@ export default function MonitoringDashboard() {
                                                     minVal={sensor.minVal}
                                                     maxVal={sensor.maxVal}
                                                     height={120}
-                                                    readings={sensor.name === "Temp RoC" ? tempRocReadings : displayReadings}
+                                                    readings={displayReadings}
                                                 />
                                             </div>
                                             <div className="flex justify-center">

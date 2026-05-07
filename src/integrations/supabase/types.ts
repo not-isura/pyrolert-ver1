@@ -87,6 +87,7 @@ export type Database = {
           gas_no2: number | null
           gas_o2: number | null
           temp_c: number | null
+          temp_roc: number | null
           pm25: number | null
           detection_result: string | null
           created_at: string
@@ -98,6 +99,7 @@ export type Database = {
           gas_no2?: number | null
           gas_o2?: number | null
           temp_c?: number | null
+          temp_roc?: number | null
           pm25?: number | null
           detection_result?: string | null
           created_at?: string
@@ -109,6 +111,7 @@ export type Database = {
           gas_no2?: number | null
           gas_o2?: number | null
           temp_c?: number | null
+          temp_roc?: number | null
           pm25?: number | null
           detection_result?: string | null
           created_at?: string
