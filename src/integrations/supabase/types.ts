@@ -14,6 +14,55 @@ export type Database = {
   }
   public: {
     Tables: {
+      alert_episodes: {
+        Row: {
+          id: number
+          started_ts: number
+          last_updated_ts: number
+          current_state: string
+          status: string
+          meta: Json | null
+        }
+        Insert: {
+          id?: number
+          started_ts: number
+          last_updated_ts: number
+          current_state: string
+          status?: string
+          meta?: Json | null
+        }
+        Update: {
+          id?: number
+          started_ts?: number
+          last_updated_ts?: number
+          current_state?: string
+          status?: string
+          meta?: Json | null
+        }
+      }
+      alert_transitions: {
+        Row: {
+          id: number
+          episode_id: number
+          ts: number
+          state: string
+          meta: Json | null
+        }
+        Insert: {
+          id?: number
+          episode_id: number
+          ts: number
+          state: string
+          meta?: Json | null
+        }
+        Update: {
+          id?: number
+          episode_id?: number
+          ts?: number
+          state?: string
+          meta?: Json | null
+        }
+      }
       users: {
         Row: {
           id: string

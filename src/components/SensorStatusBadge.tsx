@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-export type SensorStatusType = "normal" | "warning" | "high_alert";
+export type SensorStatusType = "normal" | "warning" | "high_alert" | "offline";
 
 interface SensorStatusBadgeProps {
   status: SensorStatusType;
@@ -22,6 +22,11 @@ const sensorStatusConfig = {
     label: "HIGH ALERT",
     bg: "#FFE5E5",
     color: "hsl(var(--brand-red))",
+  },
+  offline: {
+    label: "OFFLINE",
+    bg: "#F3F4F6",
+    color: "#9CA3AF",
   },
 };
 

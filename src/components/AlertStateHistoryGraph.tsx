@@ -11,10 +11,10 @@ import {
     LineType,
     UTCTimestamp,
 } from "lightweight-charts";
-import type { AlertStateHistory } from "@/hooks/useAlert";
+import type { AlertTransition } from "@/hooks/useAlertEpisode";
 
 interface AlertStateHistoryGraphProps {
-    history: AlertStateHistory[];
+    history: AlertTransition[];
 }
 
 // Numeric encoding for y-axis: Warning = 1, High Alert = 2
@@ -127,8 +127,8 @@ export default function AlertStateHistoryGraph({ history }: AlertStateHistoryGra
 
         const data: LineData[] = history
             .map((entry) => ({
-                time: Math.floor(new Date(entry.timestamp).getTime() / 1000) as UTCTimestamp,
-                value: STATE_VALUE[entry.state] ?? 1,
+                time: Math.floor(entry.ts) as UTCTimestamp,
+                value: STATE_VALUE[entry.state.trim().toLowerCase().replace(" ", "_")] ?? 1,
             }))
             .sort((a, b) => (a.time as number) - (b.time as number));
 

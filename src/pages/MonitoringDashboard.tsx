@@ -7,7 +7,8 @@ import { useSensor } from "@/components/SupabaseProvider";
 import SensorReadingGraph, { SensorReading } from "@/components/SensorReadingGraph";
 import TrendBadge from "@/components/TrendBadge";
 import AlertStateHistoryGraph from "@/components/AlertStateHistoryGraph";
-import { useAlert } from "@/hooks/useAlert";
+import { useAlertEpisode } from "@/hooks/useAlertEpisode";
+import { useDeviceConnection } from "@/hooks/useDeviceConnection";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,15 +20,13 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-    AlertTriangle,
-    Archive,
-    CheckCircle,
     ChevronLeft,
     ChevronRight,
+    HelpCircle,
     X,
 } from "lucide-react";
 
-type StatusLevel = "normal" | "warning" | "high_alert";
+type StatusLevel = "normal" | "warning" | "high_alert" | "disconnected";
 
 type SensorDisplayData = {
     name: string;
@@ -75,9 +74,10 @@ const STATIC_CAMERA_SNAPSHOTS = [
 ];
 
 const statusConfig: Record<StatusLevel, { color: string; label: string }> = {
-    normal:     { color: "hsl(var(--brand-green))", label: "Normal"     },
-    warning:    { color: "hsl(var(--brand-orange))", label: "Warning"   },
-    high_alert: { color: "hsl(var(--brand-red))",    label: "High Alert" },
+    normal:       { color: "hsl(var(--brand-green))",  label: "Normal"       },
+    warning:      { color: "hsl(var(--brand-orange))", label: "Warning"      },
+    high_alert:   { color: "hsl(var(--brand-red))",    label: "High Alert"   },
+    disconnected: { color: "#9CA3AF",                  label: "Disconnected" },
 };
 
 const alertStatusBadge: Record<string, { label: string; className: string }> = {
@@ -99,45 +99,36 @@ const describeArc = (centerX: number, centerY: number, radius: number, startAngl
     return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`;
 };
 
-const MOCK_BASE_TS = Math.floor(Date.now() / 1000) - 99;
-
-const MOCK_READINGS: SensorReading[] = Array.from({ length: 100 }, (_, i) => {
-    const ts = MOCK_BASE_TS + i;
-    return {
-        id: i + 1,
-        ts,
-        recorded_at: null,
-        gas_co:  22 + Math.sin(i * 0.15) * 8 + i * 0.3,
-        gas_no2: 0.5 + Math.sin(i * 0.2) * 0.25 + i * 0.003,
-        gas_o2:  20.5 - i * 0.02 + Math.cos(i * 0.1) * 0.3,
-        temp_c:  48 + Math.sin(i * 0.1) * 3 + i * 0.12,
-        temp_roc: 0.12 + Math.sin(i * 0.18) * 0.4 + i * 0.005,
-        pm25:    70 + Math.cos(i * 0.12) * 20 + i * 2,
-        detection_result: null,
-        created_at: new Date(ts * 1000).toISOString(),
-    };
-});
 
 export default function MonitoringDashboard() {
     const { readings } = useSensor();
-    const { activeAlert, alertHistory, resolveAlert, archiveAlert } = useAlert();
+    const { activeEpisode, transitions } = useAlertEpisode();
+    const { isDeviceConnected } = useDeviceConnection(readings);
 
-    const displayReadings = readings.length > 0 ? readings : MOCK_READINGS;
-    const latestReading = displayReadings.length > 0 ? displayReadings[displayReadings.length - 1] : null;
+    const displayReadings = isDeviceConnected ? readings : [];
+    const latestReading = isDeviceConnected && readings.length > 0 ? readings[readings.length - 1] : null;
 
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [isFullscreen, setIsFullscreen]           = useState(false);
     const touchStartX = useRef(0);
     const touchEndX   = useRef(0);
 
-    // Detection status comes from the confirmed alert — not raw sensor fluctuation.
-    // Current Status only shows elevated when the alert is still active.
+    // Priority: active alert > disconnected > normal
     const detectionStatus: StatusLevel =
-        activeAlert?.status === "active" ? activeAlert.current_level : "normal";
+        activeEpisode?.status === "active" ? ((): "warning" | "high_alert" => {
+            const s = activeEpisode.current_state.trim().toLowerCase().replace(" ", "_");
+            return s === "high_alert" ? "high_alert" : "warning";
+        })() :
+        !isDeviceConnected ? "disconnected" :
+                             "normal";
 
-    const currentStatusConfig = statusConfig[detectionStatus];
-    const isElevatedStatus    = detectionStatus !== "normal";
-    const gaugeNeedleAngle    = detectionStatus === "normal" ? -75 : detectionStatus === "warning" ? 0 : 75;
+    const currentStatusConfig = statusConfig[detectionStatus] ?? statusConfig.normal;
+    const isElevatedStatus    = detectionStatus === "warning" || detectionStatus === "high_alert";
+    const gaugeNeedleAngle    =
+        detectionStatus === "warning"      ? 0   :
+        detectionStatus === "high_alert"   ? 75  :
+        detectionStatus === "disconnected" ? -90 :
+                                             -75;
 
     // Live sensor values from the latest reading
     const liveValues = {
@@ -289,9 +280,137 @@ export default function MonitoringDashboard() {
         <PageLayout>
             <div className="flex flex-col gap-3">
                 {/* ── Page header ───────────────────────────────────────────────── */}
-                <div>
-                    <h2 className="text-xl font-bold text-brand-blue">{STATIC_ROOM_NAME}</h2>
-                    <p className="text-xs text-muted-foreground">Last updated: {lastUpdatedLabel}</p>
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h2 className="text-xl font-bold text-brand-blue">{STATIC_ROOM_NAME}</h2>
+                        <p className="text-xs text-muted-foreground">Last updated: {lastUpdatedLabel}</p>
+                    </div>
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-brand-blue" aria-label="Dashboard guide">
+                                <HelpCircle className="h-5 w-5" />
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                            <DialogHeader>
+                                <DialogTitle>Dashboard Guide</DialogTitle>
+                                <DialogDescription>Reference for status badges and sensor alert thresholds.</DialogDescription>
+                            </DialogHeader>
+
+                            {/* Status Badges */}
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Status Badges</p>
+                            <table className="w-full text-sm border-collapse">
+                                <thead>
+                                    <tr className="border-b border-gray-100">
+                                        <th className="text-left py-1.5 pr-4 text-xs font-semibold text-muted-foreground w-28">Badge</th>
+                                        <th className="text-left py-1.5 text-xs font-semibold text-muted-foreground">Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {[
+                                        { bg: "#F3F4F6", color: "#9CA3AF",                   label: "Offline",    desc: "The Pyrolert device is not connected or has not sent data in the last 30 seconds." },
+                                        { bg: "#D5F5DA", color: "hsl(var(--brand-green))",   label: "Normal",     desc: "All sensor readings are within safe operating ranges." },
+                                        { bg: "#FFF4E5", color: "hsl(var(--brand-orange))",  label: "Warning",    desc: "One or more readings have exceeded an early-warning threshold. Monitor closely." },
+                                        { bg: "#FFE5E5", color: "hsl(var(--brand-red))",     label: "High Alert", desc: "One or more readings have exceeded a critical threshold. Immediate action may be required." },
+                                    ].map(({ bg, color, label, desc }) => (
+                                        <tr key={label} className="border-b border-gray-50">
+                                            <td className="py-2 pr-4">
+                                                <div className="px-2 py-0.5 rounded-full inline-flex items-center" style={{ backgroundColor: bg }}>
+                                                    <span className="text-[10px] font-bold whitespace-nowrap" style={{ color }}>{label.toUpperCase()}</span>
+                                                </div>
+                                            </td>
+                                            <td className="py-2 text-muted-foreground">{desc}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+
+                            <div className="border-t border-gray-100 my-2" />
+
+                            {/* Per-sensor thresholds */}
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sensor Thresholds</p>
+                            <div className="flex flex-col gap-4">
+                                {[
+                                    {
+                                        name: "CO (Carbon Monoxide)",
+                                        rows: [
+                                            { label: "Normal",     desc: "Below 25 ppm — safe ambient level." },
+                                            { label: "Warning",    desc: "25 – 59 ppm — elevated; prolonged exposure is harmful." },
+                                            { label: "High Alert", desc: "≥ 60 ppm — dangerous concentration; evacuate immediately." },
+                                        ],
+                                    },
+                                    {
+                                        name: "NO2 (Nitrogen Dioxide)",
+                                        rows: [
+                                            { label: "Normal",     desc: "Below 0.2 ppm — safe ambient level." },
+                                            { label: "Warning",    desc: "0.2 – 0.99 ppm — irritant; sensitive individuals at risk." },
+                                            { label: "High Alert", desc: "≥ 1 ppm — hazardous; immediate ventilation required." },
+                                        ],
+                                    },
+                                    {
+                                        name: "PM2.5 (Fine Particulate Matter)",
+                                        rows: [
+                                            { label: "Normal",     desc: "Below 90 µg/m³ — acceptable air quality." },
+                                            { label: "Warning",    desc: "90 – 149 µg/m³ — unhealthy for sensitive groups." },
+                                            { label: "High Alert", desc: "≥ 150 µg/m³ — very unhealthy; reduce exposure." },
+                                        ],
+                                    },
+                                    {
+                                        name: "O2 (Oxygen)",
+                                        rows: [
+                                            { label: "Normal",     desc: "≥ 19% — normal oxygen concentration." },
+                                            { label: "Warning",    desc: "18 – 18.99% — mildly oxygen-deficient environment." },
+                                            { label: "High Alert", desc: "Below 18% — oxygen-deficient; serious health risk." },
+                                        ],
+                                    },
+                                    {
+                                        name: "Temperature",
+                                        rows: [
+                                            { label: "Normal",     desc: "≤ 57.2°C — within expected operating range." },
+                                            { label: "High Alert", desc: "> 57.2°C — critical temperature; potential fire risk." },
+                                        ],
+                                    },
+                                    {
+                                        name: "Temp RoC (Temperature Rate of Change)",
+                                        rows: [
+                                            { label: "Normal",     desc: "Below 8°C/min — temperature rising at a safe rate." },
+                                            { label: "High Alert", desc: "≥ 8°C/min — rapid temperature rise; potential fire indicator." },
+                                        ],
+                                    },
+                                ].map(({ name, rows }) => (
+                                    <div key={name}>
+                                        <p className="text-sm font-semibold text-brand-blue mb-1.5">{name}</p>
+                                        <table className="w-full text-sm border-collapse">
+                                            <thead>
+                                                <tr className="border-b border-gray-100">
+                                                    <th className="text-left py-1 pr-4 text-xs font-semibold text-muted-foreground w-28">Status</th>
+                                                    <th className="text-left py-1 text-xs font-semibold text-muted-foreground">Description</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {rows.map(({ label, desc }) => {
+                                                    const cfg =
+                                                        label === "Normal"     ? { bg: "#D5F5DA", color: "hsl(var(--brand-green))"  } :
+                                                        label === "Warning"    ? { bg: "#FFF4E5", color: "hsl(var(--brand-orange))" } :
+                                                                                 { bg: "#FFE5E5", color: "hsl(var(--brand-red))"    };
+                                                    return (
+                                                        <tr key={label} className="border-b border-gray-50">
+                                                            <td className="py-1.5 pr-4">
+                                                                <div className="px-2 py-0.5 rounded-full inline-flex items-center" style={{ backgroundColor: cfg.bg }}>
+                                                                    <span className="text-[10px] font-bold whitespace-nowrap" style={{ color: cfg.color }}>{label.toUpperCase()}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-1.5 text-muted-foreground">{desc}</td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ))}
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                 </div>
 
                 {/* ── Main layout: sidebar + sensor readings ─────────────────────── */}
@@ -329,12 +448,12 @@ export default function MonitoringDashboard() {
                         </Card>
 
                         {/* Trigger Information */}
-                        <Card className={isElevatedStatus ? "border-amber-200" : ""}>
+                        <Card>
                             <CardHeader className="pb-1 pt-3 px-4">
                                 <CardTitle className="text-sm font-bold text-brand-blue">Trigger Information</CardTitle>
                             </CardHeader>
 
-                            {!activeAlert ? (
+                            {!activeEpisode ? (
                                 <CardContent className="px-4 pb-3">
                                     <p className="text-sm text-muted-foreground">No active alerts.</p>
                                 </CardContent>
@@ -345,125 +464,85 @@ export default function MonitoringDashboard() {
                                         <div className="flex items-center justify-between">
                                             <p className="text-xs text-muted-foreground">Triggered At</p>
                                             <p className="text-xs font-semibold text-brand-blue">
-                                                {new Date(activeAlert.triggered_at).toLocaleString()}
+                                                {new Date(activeEpisode.started_ts * 1000).toLocaleString()}
                                             </p>
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <p className="text-xs text-muted-foreground">Last Updated</p>
                                             <p className="text-xs font-semibold text-brand-blue">
-                                                {new Date(activeAlert.last_updated).toLocaleString()}
+                                                {new Date(activeEpisode.last_updated_ts * 1000).toLocaleString()}
                                             </p>
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <p className="text-xs text-muted-foreground">Status</p>
-                                            <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${alertStatusBadge[activeAlert.status]?.className ?? ""}`}>
-                                                {alertStatusBadge[activeAlert.status]?.label ?? activeAlert.status}
+                                            <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${alertStatusBadge[activeEpisode.status]?.className ?? ""}`}>
+                                                {alertStatusBadge[activeEpisode.status]?.label ?? activeEpisode.status}
                                             </span>
                                         </div>
                                     </div>
 
-                                    {/* Buttons */}
-                                    <div className="flex items-center gap-2">
-                                        <Dialog>
-                                            <DialogTrigger asChild>
-                                                <Button variant="outline" size="sm" className="flex-1">
-                                                    View Report
-                                                </Button>
-                                            </DialogTrigger>
-                                            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                                                <DialogHeader>
-                                                    <DialogTitle>Alert Report</DialogTitle>
-                                                    <DialogDescription>
-                                                        Episode started {new Date(activeAlert.triggered_at).toLocaleString()}.
-                                                    </DialogDescription>
-                                                </DialogHeader>
-                                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">
-                                                    Sensor Trigger Information
-                                                </p>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                    {triggerItems.map((trigger) => (
-                                                        <div
-                                                            key={trigger.label}
-                                                            className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 ${trigger.triggered ? "border-amber-200 bg-amber-50" : "border-gray-200"}`}
-                                                        >
-                                                            <div>
-                                                                <p className="text-sm font-semibold text-brand-blue">{trigger.label}</p>
-                                                                <p className="text-xs text-muted-foreground">Threshold: {trigger.threshold}</p>
-                                                            </div>
-                                                            <p className="text-sm font-semibold" style={{ color: currentStatusConfig.color }}>
-                                                                {trigger.value}
-                                                            </p>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                <div className="border-t border-gray-100 my-2" />
-                                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                                    Alert State History
-                                                </p>
-                                                <AlertStateHistoryGraph history={alertHistory} />
-                                                <div className="mt-2 space-y-1">
-                                                    {alertHistory.map((entry) => (
-                                                        <div key={entry.id} className="flex items-center gap-3 text-sm">
-                                                            <span className="text-muted-foreground w-44 shrink-0">
-                                                                {new Date(entry.timestamp).toLocaleString()}
-                                                            </span>
-                                                            <span className="font-semibold" style={{ color: statusConfig[entry.state].color }}>
-                                                                {statusConfig[entry.state].label}
-                                                            </span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-
-                                                {activeAlert.status === "active" && (
-                                                    <>
-                                                        <div className="border-t border-gray-100 my-2" />
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                className="w-full"
-                                                                onClick={() => resolveAlert(activeAlert.id, "resolved")}
-                                                            >
-                                                                <CheckCircle className="h-3.5 w-3.5 mr-2" />
-                                                                Mark as Resolved
-                                                            </Button>
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                className="w-full"
-                                                                onClick={() => resolveAlert(activeAlert.id, "false_alarm")}
-                                                            >
-                                                                <AlertTriangle className="h-3.5 w-3.5 mr-2" />
-                                                                Mark as False Alarm
-                                                            </Button>
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </DialogContent>
-                                        </Dialog>
-
-                                        {activeAlert.status !== "active" && (
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="text-gray-500"
-                                                onClick={() => archiveAlert(activeAlert.id)}
-                                            >
-                                                <Archive className="h-3.5 w-3.5 mr-2" />
-                                                Archive
+                                    {/* View Report */}
+                                    <Dialog>
+                                        <DialogTrigger asChild>
+                                            <Button variant="outline" size="sm" className="w-full">
+                                                View Report
                                             </Button>
-                                        )}
-                                    </div>
+                                        </DialogTrigger>
+                                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                                            <DialogHeader>
+                                                <DialogTitle>Alert Report</DialogTitle>
+                                                <DialogDescription>
+                                                    Episode started {new Date(activeEpisode.started_ts * 1000).toLocaleString()}.
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">
+                                                Sensor Trigger Information
+                                            </p>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                {triggerItems.map((trigger) => (
+                                                    <div
+                                                        key={trigger.label}
+                                                        className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 ${trigger.triggered ? "border-amber-200 bg-amber-50" : "border-gray-200"}`}
+                                                    >
+                                                        <div>
+                                                            <p className="text-sm font-semibold text-brand-blue">{trigger.label}</p>
+                                                            <p className="text-xs text-muted-foreground">Threshold: {trigger.threshold}</p>
+                                                        </div>
+                                                        <p className="text-sm font-semibold" style={{ color: currentStatusConfig.color }}>
+                                                            {trigger.value}
+                                                        </p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="border-t border-gray-100 my-2" />
+                                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                                Alert State History
+                                            </p>
+                                            <AlertStateHistoryGraph history={transitions} />
+                                            <div className="mt-2 space-y-1">
+                                                {transitions.map((entry) => (
+                                                    <div key={entry.id} className="flex items-center gap-3 text-sm">
+                                                        <span className="text-muted-foreground w-44 shrink-0">
+                                                            {new Date(entry.ts * 1000).toLocaleString()}
+                                                        </span>
+                                                        <span className="font-semibold" style={{ color: statusConfig[entry.state.trim().toLowerCase().replace(" ", "_") as StatusLevel]?.color ?? "#6b7280" }}>
+                                                            {statusConfig[entry.state.trim().toLowerCase().replace(" ", "_") as StatusLevel]?.label ?? entry.state}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </DialogContent>
+                                    </Dialog>
                                 </CardContent>
                             )}
                         </Card>
 
                         {/* Camera Snapshots */}
-                        <Card className={activeAlert ? "flex-1 flex flex-col" : ""}>
+                        <Card className={activeEpisode ? "flex-1 flex flex-col" : ""}>
                             <CardHeader className="pb-1 pt-3 px-4">
                                 <CardTitle className="text-sm font-bold text-brand-blue">Camera Snapshots</CardTitle>
                             </CardHeader>
-                            {!activeAlert ? (
+                            {!activeEpisode ? (
                                 <CardContent className="px-4 pb-3">
                                     <p className="text-sm text-muted-foreground">No active alerts.</p>
                                 </CardContent>
@@ -551,18 +630,24 @@ export default function MonitoringDashboard() {
                                                 </p>
                                             </div>
                                             <div className="border-t border-gray-100 pt-1">
-                                                <SensorReadingGraph
-                                                    dataKey={sensor.dataKey}
-                                                    color={sensor.color}
-                                                    unit={sensor.unit}
-                                                    minVal={sensor.minVal}
-                                                    maxVal={sensor.maxVal}
-                                                    height={120}
-                                                    readings={displayReadings}
-                                                />
+                                                {isDeviceConnected ? (
+                                                    <SensorReadingGraph
+                                                        dataKey={sensor.dataKey}
+                                                        color={sensor.color}
+                                                        unit={sensor.unit}
+                                                        minVal={sensor.minVal}
+                                                        maxVal={sensor.maxVal}
+                                                        height={120}
+                                                        readings={displayReadings}
+                                                    />
+                                                ) : (
+                                                    <div className="flex items-center justify-center h-[120px]">
+                                                        <p className="text-xs text-muted-foreground text-center italic">Pyrolert device is disconnected</p>
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="flex justify-center">
-                                                <SensorStatusBadge status={getLiveStatus(sensor, latestReading)} />
+                                                <SensorStatusBadge status={isDeviceConnected ? getLiveStatus(sensor, latestReading) : "offline"} />
                                             </div>
                                         </CardContent>
                                     </Card>
