@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import PageLayout from "@/components/PageLayout";
 import { SensorStatusBadge, SensorStatusType } from "@/components/SensorStatusBadge";
 import { useSensor } from "@/components/SupabaseProvider";
-import SensorReadingGraph, { SensorReading } from "@/components/SensorReadingGraph";
+import SensorReadingGraph, { SensorReading, VerticalLineSpec } from "@/components/SensorReadingGraph";
+import type { IChartApi } from "lightweight-charts";
 import TrendBadge from "@/components/TrendBadge";
-import AlertStateHistoryGraph from "@/components/AlertStateHistoryGraph";
 import { useAlertEpisode } from "@/hooks/useAlertEpisode";
 import { useDeviceConnection } from "@/hooks/useDeviceConnection";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,7 @@ import {
     ChevronLeft,
     ChevronRight,
     HelpCircle,
+    RefreshCw,
     X,
 } from "lucide-react";
 
@@ -67,6 +69,19 @@ const STATIC_SENSORS: SensorDisplayData[] = [
     { name: "Temp RoC",    value: "", status: "normal", dataKey: "temp_roc", color: "#06b6d4", unit: "C/min", minVal: -2, maxVal: 10  },
 ];
 
+const getSensorThreshold = (sensorName: string, status: StatusLevel): number | undefined => {
+    if (status !== "warning" && status !== "high_alert") return undefined;
+    switch (sensorName) {
+        case "CO":          return status === "high_alert" ? 60  : 25;
+        case "NO2":         return status === "high_alert" ? 1   : 0.2;
+        case "PM2.5":       return status === "high_alert" ? 150 : 90;
+        case "O2":          return status === "high_alert" ? 18  : 19;
+        case "Temperature": return 57.2;
+        case "Temp RoC":    return 8;
+        default:            return undefined;
+    }
+};
+
 const STATIC_CAMERA_SNAPSHOTS = [
     { id: "snapshot-1", label: "Snapshot 1 - 09:41 AM" },
     { id: "snapshot-2", label: "Snapshot 2 - 09:46 AM" },
@@ -110,8 +125,67 @@ export default function MonitoringDashboard() {
 
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [isFullscreen, setIsFullscreen]           = useState(false);
+    const [isReportOpen,  setIsReportOpen]          = useState(false);
+    const [modalReadings, setModalReadings]         = useState<SensorReading[]>([]);
+    const [modalLoading,  setModalLoading]          = useState(false);
     const touchStartX = useRef(0);
     const touchEndX   = useRef(0);
+
+    const modalChartsRef = useRef<IChartApi[]>([]);
+    const isSyncingRef   = useRef(false);
+
+    const handleModalChartCreated = useCallback((chart: IChartApi) => {
+        modalChartsRef.current.push(chart);
+        chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+            if (isSyncingRef.current || !range) return;
+            isSyncingRef.current = true;
+            modalChartsRef.current.forEach((c) => {
+                if (c !== chart) c.timeScale().setVisibleLogicalRange(range);
+            });
+            isSyncingRef.current = false;
+        });
+    }, []);
+
+    const handleModalChartRemoved = useCallback((chart: IChartApi) => {
+        modalChartsRef.current = modalChartsRef.current.filter((c) => c !== chart);
+    }, []);
+
+    // Build vertical line specs for modal graphs
+    const modalVerticalLines = useCallback((): VerticalLineSpec[] => {
+        if (!activeEpisode) return [];
+        const lines: VerticalLineSpec[] = [];
+
+        // 1. Alert start — red solid
+        lines.push({ ts: activeEpisode.started_ts, color: "#ef4444", dashed: false });
+
+        // 2. Warning → High Alert transitions — orange dashed
+        for (const t of transitions) {
+            const normalized = t.state.trim().toLowerCase().replace(" ", "_");
+            if (normalized === "high_alert") {
+                lines.push({ ts: t.ts, color: "#f97316", dashed: true });
+            }
+        }
+
+        // 3. Last updated — gray solid (end / last active)
+        if (activeEpisode.last_updated_ts !== activeEpisode.started_ts) {
+            lines.push({ ts: activeEpisode.last_updated_ts, color: "#94a3b8", dashed: false });
+        }
+
+        return lines;
+    }, [activeEpisode, transitions]);
+
+    const fetchModalReadings = useCallback(async () => {
+        if (!activeEpisode) return;
+        setModalLoading(true);
+        const { data } = await supabase
+            .from("sensor_readings")
+            .select("*")
+            .gte("ts", activeEpisode.started_ts - 20)
+            .lte("ts", activeEpisode.last_updated_ts + 20)
+            .order("ts", { ascending: true });
+        setModalReadings(data ?? []);
+        setModalLoading(false);
+    }, [activeEpisode]);
 
     // Priority: active alert > disconnected > normal
     const detectionStatus: StatusLevel =
@@ -139,29 +213,6 @@ export default function MonitoringDashboard() {
         tempC:  typeof latestReading?.temp_c   === "number" ? latestReading.temp_c   : null,
         tempRoc: typeof latestReading?.temp_roc === "number" ? latestReading.temp_roc : null,
     };
-
-    const highAlertThresholds = [
-        { label: "CO",          value: liveValues.co    !== null ? `${liveValues.co.toFixed(3)} ppm`   : "—", threshold: ">= 60 ppm",   triggered: liveValues.co    !== null && liveValues.co    >= 60   },
-        { label: "NO2",         value: liveValues.no2   !== null ? `${liveValues.no2.toFixed(3)} ppm`  : "—", threshold: ">= 1 ppm",    triggered: liveValues.no2   !== null && liveValues.no2   >= 1    },
-        { label: "PM2.5",       value: liveValues.pm25  !== null ? `${liveValues.pm25.toFixed(0)} ug/m3` : "—", threshold: ">= 150 ug/m3", triggered: liveValues.pm25 !== null && liveValues.pm25  >= 150  },
-        { label: "O2",          value: liveValues.o2    !== null ? `${liveValues.o2.toFixed(2)} %`     : "—", threshold: "< 18 %",      triggered: liveValues.o2    !== null && liveValues.o2    < 18    },
-        { label: "Temperature", value: liveValues.tempC   !== null ? `${liveValues.tempC.toFixed(2)} C`        : "—", threshold: "> 57.2 C",   triggered: liveValues.tempC   !== null && liveValues.tempC   > 57.2 },
-        { label: "Temp RoC",   value: liveValues.tempRoc !== null ? `${liveValues.tempRoc.toFixed(2)} C/min`  : "—", threshold: ">= 8 C/min", triggered: liveValues.tempRoc !== null && liveValues.tempRoc >= 8   },
-    ];
-
-    const warningThresholds = [
-        { label: "CO",          value: liveValues.co     !== null ? `${liveValues.co.toFixed(3)} ppm`        : "—", threshold: ">= 25 ppm",  triggered: liveValues.co     !== null && liveValues.co     >= 25   },
-        { label: "NO2",         value: liveValues.no2    !== null ? `${liveValues.no2.toFixed(3)} ppm`       : "—", threshold: ">= 0.2 ppm", triggered: liveValues.no2    !== null && liveValues.no2    >= 0.2  },
-        { label: "PM2.5",       value: liveValues.pm25   !== null ? `${liveValues.pm25.toFixed(0)} ug/m3`    : "—", threshold: ">= 90 ug/m3", triggered: liveValues.pm25  !== null && liveValues.pm25   >= 90   },
-        { label: "O2",          value: liveValues.o2     !== null ? `${liveValues.o2.toFixed(2)} %`          : "—", threshold: "< 19 %",     triggered: liveValues.o2     !== null && liveValues.o2     < 19    },
-        { label: "Temperature", value: liveValues.tempC  !== null ? `${liveValues.tempC.toFixed(2)} C`       : "—", threshold: "> 57.2 C",   triggered: liveValues.tempC  !== null && liveValues.tempC  > 57.2  },
-        { label: "Temp RoC",    value: liveValues.tempRoc !== null ? `${liveValues.tempRoc.toFixed(2)} C/min` : "—", threshold: ">= 8 C/min", triggered: liveValues.tempRoc !== null && liveValues.tempRoc >= 8   },
-    ];
-
-    const triggerItems =
-        detectionStatus === "high_alert" ? highAlertThresholds :
-        detectionStatus === "warning"    ? warningThresholds   :
-        warningThresholds.map((t) => ({ ...t, triggered: false }));
 
     const formatLastUpdated = (reading: SensorReading | null) => {
         if (!reading) return "—";
@@ -482,54 +533,217 @@ export default function MonitoringDashboard() {
                                     </div>
 
                                     {/* View Report */}
-                                    <Dialog>
+                                    <Dialog open={isReportOpen} onOpenChange={(open) => {
+                                        setIsReportOpen(open);
+                                        if (open) fetchModalReadings();
+                                    }}>
                                         <DialogTrigger asChild>
                                             <Button variant="outline" size="sm" className="w-full">
                                                 View Report
                                             </Button>
                                         </DialogTrigger>
-                                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                                            <DialogHeader>
-                                                <DialogTitle>Alert Report</DialogTitle>
-                                                <DialogDescription>
-                                                    Episode started {new Date(activeEpisode.started_ts * 1000).toLocaleString()}.
-                                                </DialogDescription>
-                                            </DialogHeader>
-                                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">
-                                                Sensor Trigger Information
-                                            </p>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                {triggerItems.map((trigger) => (
-                                                    <div
-                                                        key={trigger.label}
-                                                        className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 ${trigger.triggered ? "border-amber-200 bg-amber-50" : "border-gray-200"}`}
-                                                    >
-                                                        <div>
-                                                            <p className="text-sm font-semibold text-brand-blue">{trigger.label}</p>
-                                                            <p className="text-xs text-muted-foreground">Threshold: {trigger.threshold}</p>
+                                        <DialogContent className="max-w-5xl h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
+                                            {/* ── Sticky header ── */}
+                                            <div className="shrink-0 px-6 pt-6 pb-4 border-b border-gray-100 pr-14 flex flex-col gap-3">
+                                                <div className="flex items-center gap-2">
+                                                    <DialogTitle className="text-lg font-bold text-brand-blue">Alert Report</DialogTitle>
+                                                    {/* Nested graph guide */}
+                                                    <Dialog>
+                                                        <DialogTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="rounded-full h-6 w-6 text-muted-foreground hover:text-brand-blue" aria-label="Graph guide">
+                                                                <HelpCircle className="h-4 w-4" />
+                                                            </Button>
+                                                        </DialogTrigger>
+                                                        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+                                                            <DialogHeader>
+                                                                <DialogTitle>Graph Guide</DialogTitle>
+                                                                <DialogDescription>Reference for vertical and horizontal lines shown in sensor graphs.</DialogDescription>
+                                                            </DialogHeader>
+
+                                                            {/* Vertical lines */}
+                                                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Vertical Lines</p>
+                                                            <table className="w-full text-sm border-collapse">
+                                                                <thead>
+                                                                    <tr className="border-b border-gray-100">
+                                                                        <th className="text-left py-1.5 pr-4 text-xs font-semibold text-muted-foreground w-24">Line</th>
+                                                                        <th className="text-left py-1.5 pr-4 text-xs font-semibold text-muted-foreground w-28">Style</th>
+                                                                        <th className="text-left py-1.5 text-xs font-semibold text-muted-foreground">Description</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {[
+                                                                        {
+                                                                            label: "Alert Start",
+                                                                            color: "#ef4444",
+                                                                            dashed: false,
+                                                                            desc: "Marks triggered_at — the moment the alert episode began.",
+                                                                        },
+                                                                        {
+                                                                            label: "Transition",
+                                                                            color: "#f97316",
+                                                                            dashed: true,
+                                                                            desc: "Marks when the alert escalated from Warning to High Alert.",
+                                                                        },
+                                                                        {
+                                                                            label: "Last Active",
+                                                                            color: "#94a3b8",
+                                                                            dashed: false,
+                                                                            desc: "Marks last_updated_ts — the last recorded update of the active episode.",
+                                                                        },
+                                                                    ].map(({ label, color, dashed, desc }) => (
+                                                                        <tr key={label} className="border-b border-gray-50">
+                                                                            <td className="py-2 pr-4 text-xs font-medium">{label}</td>
+                                                                            <td className="py-2 pr-4">
+                                                                                <svg width="60" height="14" aria-hidden="true">
+                                                                                    <line
+                                                                                        x1="0" y1="7" x2="60" y2="7"
+                                                                                        stroke={color}
+                                                                                        strokeWidth="2"
+                                                                                        strokeDasharray={dashed ? "4 3" : undefined}
+                                                                                    />
+                                                                                </svg>
+                                                                            </td>
+                                                                            <td className="py-2 text-xs text-muted-foreground">{desc}</td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+
+                                                            <div className="border-t border-gray-100 my-2" />
+
+                                                            {/* Horizontal line */}
+                                                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Horizontal Line</p>
+                                                            <table className="w-full text-sm border-collapse">
+                                                                <thead>
+                                                                    <tr className="border-b border-gray-100">
+                                                                        <th className="text-left py-1.5 pr-4 text-xs font-semibold text-muted-foreground w-24">Line</th>
+                                                                        <th className="text-left py-1.5 pr-4 text-xs font-semibold text-muted-foreground w-28">Style</th>
+                                                                        <th className="text-left py-1.5 text-xs font-semibold text-muted-foreground">Description</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    <tr className="border-b border-gray-50">
+                                                                        <td className="py-2 pr-4 text-xs font-medium">Threshold</td>
+                                                                        <td className="py-2 pr-4">
+                                                                            <svg width="60" height="14" aria-hidden="true">
+                                                                                <line x1="0" y1="7" x2="60" y2="7" stroke="#f59e0b" strokeWidth="2" strokeDasharray="4 3" />
+                                                                            </svg>
+                                                                        </td>
+                                                                        <td className="py-2 text-xs text-muted-foreground">
+                                                                            The alert threshold for this sensor. For Warning status, shows the warning threshold; for High Alert, shows the critical threshold. Temperature and Temp RoC always show the High Alert threshold.
+                                                                        </td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </DialogContent>
+                                                    </Dialog>
+                                                </div>
+
+                                                <div className="flex items-start gap-6">
+                                                    {/* Left: status + timestamps */}
+                                                    <div className="shrink-0 flex flex-col gap-1.5">
+                                                        {[
+                                                            { label: "Current Status", content: (
+                                                                <span className={`text-xs font-bold ${isElevatedStatus ? "motion-safe:animate-pulse" : ""}`} style={{ color: currentStatusConfig.color }}>
+                                                                    {currentStatusConfig.label.toUpperCase()}
+                                                                </span>
+                                                            )},
+                                                            { label: "Triggered At", content: <span className="text-xs">{new Date(activeEpisode.started_ts * 1000).toLocaleString()}</span> },
+                                                            { label: "Last Updated",  content: <span className="text-xs">{new Date(activeEpisode.last_updated_ts * 1000).toLocaleString()}</span> },
+                                                        ].map(({ label, content }) => (
+                                                            <div key={label} className="flex items-center gap-3 text-xs">
+                                                                <span className="text-muted-foreground w-24 shrink-0">{label}</span>
+                                                                {content}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+
+                                                    <div className="w-px self-stretch bg-gray-200 shrink-0" />
+
+                                                    {/* Right: alert state history */}
+                                                    <div className="shrink-0 flex flex-col gap-1.5">
+                                                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Alert State History</p>
+                                                        <div className="space-y-1 overflow-y-auto max-h-20">
+                                                            {transitions.length === 0 ? (
+                                                                <p className="text-xs text-muted-foreground">No transitions recorded.</p>
+                                                            ) : [...transitions].reverse().map((entry) => (
+                                                                <div key={entry.id} className="flex items-center gap-3 text-xs">
+                                                                    <span className="text-muted-foreground w-24 shrink-0">
+                                                                        {new Date(entry.ts * 1000).toLocaleTimeString()}
+                                                                    </span>
+                                                                    <span className="font-medium" style={{ color: statusConfig[entry.state.trim().toLowerCase().replace(" ", "_") as StatusLevel]?.color ?? "#6b7280" }}>
+                                                                        {statusConfig[entry.state.trim().toLowerCase().replace(" ", "_") as StatusLevel]?.label ?? entry.state}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
                                                         </div>
-                                                        <p className="text-sm font-semibold" style={{ color: currentStatusConfig.color }}>
-                                                            {trigger.value}
-                                                        </p>
                                                     </div>
-                                                ))}
+                                                </div>
                                             </div>
-                                            <div className="border-t border-gray-100 my-2" />
-                                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                                Alert State History
-                                            </p>
-                                            <AlertStateHistoryGraph history={transitions} />
-                                            <div className="mt-2 space-y-1">
-                                                {transitions.map((entry) => (
-                                                    <div key={entry.id} className="flex items-center gap-3 text-sm">
-                                                        <span className="text-muted-foreground w-44 shrink-0">
-                                                            {new Date(entry.ts * 1000).toLocaleString()}
-                                                        </span>
-                                                        <span className="font-semibold" style={{ color: statusConfig[entry.state.trim().toLowerCase().replace(" ", "_") as StatusLevel]?.color ?? "#6b7280" }}>
-                                                            {statusConfig[entry.state.trim().toLowerCase().replace(" ", "_") as StatusLevel]?.label ?? entry.state}
-                                                        </span>
+
+                                            {/* ── Scrollable body: sensor graphs only ── */}
+                                            <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4">
+                                                {/* Sensor graphs section header with reload */}
+                                                <div className="flex items-center justify-between">
+                                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                                        Sensor Readings at Alert Time
+                                                    </p>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-7 gap-1.5 text-xs text-muted-foreground"
+                                                        disabled={modalLoading}
+                                                        onClick={fetchModalReadings}
+                                                    >
+                                                        <RefreshCw className={`h-3 w-3 ${modalLoading ? "animate-spin" : ""}`} />
+                                                        Reload
+                                                    </Button>
+                                                </div>
+
+                                                {modalLoading ? (
+                                                    <div className="flex items-center justify-center h-32">
+                                                        <p className="text-sm text-muted-foreground">Loading sensor data…</p>
                                                     </div>
-                                                ))}
+                                                ) : modalReadings.length === 0 ? (
+                                                    <div className="flex items-center justify-center h-32">
+                                                        <p className="text-sm text-muted-foreground">No readings found for this episode window.</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                        {STATIC_SENSORS.map((sensor) => {
+                                                            const threshold = getSensorThreshold(sensor.name, detectionStatus);
+                                                            return (
+                                                            <div key={sensor.name} className="rounded-md border border-gray-200 p-3">
+                                                                <div className="flex items-center justify-between mb-1">
+                                                                    <p className="text-xs font-semibold text-brand-blue">
+                                                                        {sensor.name}
+                                                                        <span className="text-gray-400 font-normal ml-1">({sensor.unit})</span>
+                                                                    </p>
+                                                                    {threshold !== undefined && (
+                                                                        <p className="text-[10px] text-amber-600 font-medium">
+                                                                            threshold: {threshold} {sensor.unit}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                                <SensorReadingGraph
+                                                                    dataKey={sensor.dataKey}
+                                                                    color={sensor.color}
+                                                                    unit={sensor.unit}
+                                                                    minVal={sensor.minVal}
+                                                                    maxVal={sensor.maxVal}
+                                                                    height={120}
+                                                                    readings={modalReadings}
+                                                                    verticalLines={modalVerticalLines()}
+                                                                    thresholdValue={threshold}
+                                                                    interactive
+                                                                    onChartCreated={handleModalChartCreated}
+                                                                    onChartRemoved={handleModalChartRemoved}
+                                                                />
+                                                            </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
                                             </div>
                                         </DialogContent>
                                     </Dialog>
