@@ -25,6 +25,7 @@ export type Database = {
           buzzer_muted: boolean
           buzzer_status: string
           rpi_acknowledged_at: string | null
+          dismissed_at: string | null
         }
         Insert: {
           id?: number
@@ -36,6 +37,7 @@ export type Database = {
           buzzer_muted?: boolean
           buzzer_status?: string
           rpi_acknowledged_at?: string | null
+          dismissed_at?: string | null
         }
         Update: {
           id?: number
@@ -47,6 +49,7 @@ export type Database = {
           buzzer_muted?: boolean
           buzzer_status?: string
           rpi_acknowledged_at?: string | null
+          dismissed_at?: string | null
         }
       }
       alert_transitions: {

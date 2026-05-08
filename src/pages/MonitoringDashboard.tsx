@@ -21,6 +21,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+    Archive,
     CheckCircle,
     ChevronLeft,
     ChevronRight,
@@ -138,6 +139,7 @@ export default function MonitoringDashboard() {
     const [successBanner,      setSuccessBanner]      = useState<string | null>(null);
     const [errorBanner,        setErrorBanner]        = useState<string | null>(null);
     const [rpiActive,          setRpiActive]          = useState(false);
+    const [isDismissing,       setIsDismissing]       = useState(false);
     const pendingActionRef       = useRef<"resolved" | "false_alarm" | null>(null);
     const prevAcknowledgedAtRef  = useRef<string | null>(null);
     const actingTimeoutRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -251,6 +253,29 @@ export default function MonitoringDashboard() {
             setErrorBanner("Action timed out — RPi did not respond. Reverted to active.");
         }, 10000);
     }, [activeEpisode]);
+
+    const handleDismiss = useCallback(async () => {
+        if (!activeEpisode) return;
+        setIsDismissing(true);
+        await supabase
+            .from("alert_episodes")
+            .update({ dismissed_at: new Date().toISOString() } as never)
+            .eq("id", activeEpisode.id);
+        setIsDismissing(false);
+    }, [activeEpisode]);
+
+    // Auto-dismiss any lingering resolved/false_alarm episodes when a new active one arrives
+    useEffect(() => {
+        if (!activeEpisode || activeEpisode.status !== "active") return;
+        void (async () => {
+            await supabase
+                .from("alert_episodes")
+                .update({ dismissed_at: new Date().toISOString() } as never)
+                .in("status", ["resolved", "false_alarm"])
+                .is("dismissed_at", null)
+                .neq("id", activeEpisode.id);
+        })();
+    }, [activeEpisode?.id]);
 
     const modalChartsRef = useRef<IChartApi[]>([]);
     const isSyncingRef   = useRef(false);
@@ -620,10 +645,10 @@ export default function MonitoringDashboard() {
                             </CardContent>
                         </Card>
 
-                        {/* Trigger Information */}
+                        {/* Alert Information */}
                         <Card>
                             <CardHeader className="pb-1 pt-3 px-4">
-                                <CardTitle className="text-sm font-bold text-brand-blue">Trigger Information</CardTitle>
+                                <CardTitle className="text-sm font-bold text-brand-blue">Alert Information</CardTitle>
                             </CardHeader>
 
                             {!activeEpisode ? (
@@ -654,13 +679,26 @@ export default function MonitoringDashboard() {
                                         </div>
                                     </div>
 
-                                    {/* View Report */}
-                                    <Dialog open={isReportOpen} onOpenChange={(open) => {
-                                        setIsReportOpen(open);
-                                        if (open) fetchModalReadings();
-                                    }}>
+                                    {/* View Report + Dismiss */}
+                                    <div className="flex gap-2">
+                                        {(activeEpisode.status === "resolved" || activeEpisode.status === "false_alarm") && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={isDismissing}
+                                                className="flex-1 gap-1.5 text-xs text-muted-foreground"
+                                                onClick={handleDismiss}
+                                            >
+                                                {isDismissing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
+                                                Dismiss
+                                            </Button>
+                                        )}
+                                        <Dialog open={isReportOpen} onOpenChange={(open) => {
+                                            setIsReportOpen(open);
+                                            if (open) fetchModalReadings();
+                                        }}>
                                         <DialogTrigger asChild>
-                                            <Button variant="outline" size="sm" className="w-full">
+                                            <Button variant="outline" size="sm" className="flex-1">
                                                 View Report
                                             </Button>
                                         </DialogTrigger>
@@ -899,8 +937,8 @@ export default function MonitoringDashboard() {
 
                                                 {/* Action buttons */}
                                                 <div className="flex items-center justify-between gap-2">
-                                                    {/* Left: activity indicator */}
-                                                    {(() => {
+                                                    {/* Left: activity indicator — only for active episodes */}
+                                                    {activeEpisode.status === "active" ? (() => {
                                                         const dotColor =
                                                             rpiActive && detectionStatus === "high_alert" ? "#ef4444" :
                                                             rpiActive && detectionStatus === "warning"    ? "#f97316" :
@@ -915,7 +953,7 @@ export default function MonitoringDashboard() {
                                                                 <span className="text-xs font-medium" style={{ color: dotColor }}>{label}</span>
                                                             </div>
                                                         );
-                                                    })()}
+                                                    })() : <div />}
 
                                                     {/* Right: buttons */}
                                                     <div className="flex items-center gap-2">
@@ -979,11 +1017,26 @@ export default function MonitoringDashboard() {
                                                                 Mark as False Alarm
                                                             </Button>
                                                         )}
+
+                                                        {/* Dismiss — only for resolved / false_alarm */}
+                                                        {(activeEpisode.status === "resolved" || activeEpisode.status === "false_alarm") && !pendingAction && (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                disabled={isDismissing}
+                                                                onClick={handleDismiss}
+                                                                className="gap-1.5 text-xs text-muted-foreground"
+                                                            >
+                                                                {isDismissing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
+                                                                Dismiss
+                                                            </Button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
                                         </DialogContent>
                                     </Dialog>
+                                    </div>
                                 </CardContent>
                             )}
                         </Card>

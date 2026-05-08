@@ -18,13 +18,14 @@ export function useAlertEpisode() {
     useEffect(() => {
         const fetchInitial = async () => {
             // Fetch the single active episode (at most one exists at a time)
-            const { data: episode, error: epErr } = await supabase
+            const { data: episodeRaw, error: epErr } = await supabase
                 .from("alert_episodes")
                 .select("*")
-                .eq("status", "active")
+                .is("dismissed_at", null)
                 .order("started_ts", { ascending: false })
                 .limit(1)
                 .maybeSingle();
+            const episode = episodeRaw as AlertEpisode | null;
 
             if (epErr) {
                 console.error("[useAlertEpisode] Episode fetch error:", epErr);
@@ -86,6 +87,12 @@ export function useAlertEpisode() {
                 (payload) => {
                     const updated = payload.new as AlertEpisode;
                     if (updated.id !== episodeIdRef.current) return;
+                    if (updated.dismissed_at !== null) {
+                        setActiveEpisode(null);
+                        setTransitions([]);
+                        episodeIdRef.current = null;
+                        return;
+                    }
                     setActiveEpisode(updated);
                 }
             )
