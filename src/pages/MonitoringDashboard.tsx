@@ -803,11 +803,16 @@ export default function MonitoringDashboard() {
                                                     {/* Left: status + timestamps */}
                                                     <div className="shrink-0 flex flex-col gap-1.5">
                                                         {[
-                                                            { label: "Current Status", content: (
-                                                                <span className={`text-xs font-bold ${isElevatedStatus ? "motion-safe:animate-pulse" : ""}`} style={{ color: currentStatusConfig.color }}>
-                                                                    {currentStatusConfig.label.toUpperCase()}
-                                                                </span>
-                                                            )},
+                                                            { label: "Current Status", content: (() => {
+                                                                const epState = activeEpisode.current_state.trim().toLowerCase().replace(" ", "_") as StatusLevel;
+                                                                const epConfig = statusConfig[epState] ?? statusConfig.normal;
+                                                                const shouldPulse = activeEpisode.status === "active" && (epState === "warning" || epState === "high_alert");
+                                                                return (
+                                                                    <span className={`text-xs font-bold ${shouldPulse ? "motion-safe:animate-pulse" : ""}`} style={{ color: epConfig.color }}>
+                                                                        {epConfig.label.toUpperCase()}
+                                                                    </span>
+                                                                );
+                                                            })()},
                                                             { label: "Triggered At", content: <span className="text-xs">{new Date(activeEpisode.started_ts * 1000).toLocaleString()}</span> },
                                                             { label: "Last Updated",  content: <span className="text-xs">{new Date(activeEpisode.last_updated_ts * 1000).toLocaleString()}</span> },
                                                         ].map(({ label, content }) => (
