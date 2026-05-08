@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PageLayout from "@/components/PageLayout";
+import AlertOverlay, { type OverlayState } from "@/components/AlertOverlay";
 import { SensorStatusBadge, SensorStatusType } from "@/components/SensorStatusBadge";
 import { useSensor } from "@/components/SupabaseProvider";
 import SensorReadingGraph, { SensorReading, VerticalLineSpec } from "@/components/SensorReadingGraph";
@@ -140,6 +141,9 @@ export default function MonitoringDashboard() {
     const [errorBanner,        setErrorBanner]        = useState<string | null>(null);
     const [rpiActive,          setRpiActive]          = useState(false);
     const [isDismissing,       setIsDismissing]       = useState(false);
+    const [overlayState,       setOverlayState]       = useState<OverlayState>("hidden");
+    const [overlayAnimKey,     setOverlayAnimKey]     = useState(0);
+    const overlaySeverityRef = useRef(0);
     const pendingActionRef       = useRef<"resolved" | "false_alarm" | null>(null);
     const prevAcknowledgedAtRef  = useRef<string | null>(null);
     const actingTimeoutRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -276,6 +280,25 @@ export default function MonitoringDashboard() {
                 .neq("id", activeEpisode.id);
         })();
     }, [activeEpisode?.id]);
+
+    // Show overlay when a new active episode arrives or severity escalates
+    useEffect(() => {
+        if (!activeEpisode || activeEpisode.status !== "active") return;
+        const rank = activeEpisode.current_state.trim().toLowerCase().replace(/\s+/g, "_") === "high_alert" ? 2 : 1;
+        if (rank > overlaySeverityRef.current) {
+            overlaySeverityRef.current = rank;
+            setOverlayState("open");
+            setOverlayAnimKey(k => k + 1);
+        }
+    }, [activeEpisode?.id, activeEpisode?.current_state]);
+
+    // Hide overlay when episode resolves, is marked false alarm, or is dismissed
+    useEffect(() => {
+        if (!activeEpisode || activeEpisode.status !== "active") {
+            setOverlayState("hidden");
+            overlaySeverityRef.current = 0;
+        }
+    }, [activeEpisode?.status]);
 
     const modalChartsRef = useRef<IChartApi[]>([]);
     const isSyncingRef   = useRef(false);
@@ -477,6 +500,24 @@ export default function MonitoringDashboard() {
     return (
         <PageLayout>
             <div className="flex flex-col gap-3">
+                {/* ── Alert Overlay (minimized strip sits here; full overlay is fixed) ── */}
+                {activeEpisode && (
+                    <div className={overlayState !== "hidden" ? "-mt-4 sm:-mt-6 lg:-mt-8 -mx-4 sm:-mx-6 lg:-mx-8 mb-3" : ""}>
+                        <AlertOverlay
+                            state={overlayState}
+                            episode={activeEpisode}
+                            animationKey={overlayAnimKey}
+                            onMinimize={() => setOverlayState("minimized")}
+                            onExpand={() => { setOverlayState("open"); setOverlayAnimKey(k => k + 1); }}
+                            onViewReport={() => {
+                                setOverlayState("minimized");
+                                setIsReportOpen(true);
+                                fetchModalReadings();
+                            }}
+                        />
+                    </div>
+                )}
+
                 {/* ── Page header ───────────────────────────────────────────────── */}
                 <div className="flex items-start justify-between">
                     <div>
@@ -1166,6 +1207,7 @@ export default function MonitoringDashboard() {
                     </Card>
                 </div>
             </div>
+
 
             {/* ── Fullscreen Camera Overlay ─────────────────────────────────────── */}
             {isFullscreen && (
