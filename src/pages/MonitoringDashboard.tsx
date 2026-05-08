@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PageLayout from "@/components/PageLayout";
 import { SensorStatusBadge, SensorStatusType } from "@/components/SensorStatusBadge";
 import { useSensor } from "@/components/SupabaseProvider";
@@ -21,11 +21,16 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+    CheckCircle,
     ChevronLeft,
     ChevronRight,
     HelpCircle,
+    Loader2,
     RefreshCw,
+    Volume2,
+    VolumeX,
     X,
+    XCircle,
 } from "lucide-react";
 
 type StatusLevel = "normal" | "warning" | "high_alert" | "disconnected";
@@ -128,8 +133,124 @@ export default function MonitoringDashboard() {
     const [isReportOpen,  setIsReportOpen]          = useState(false);
     const [modalReadings, setModalReadings]         = useState<SensorReading[]>([]);
     const [modalLoading,  setModalLoading]          = useState(false);
+    const [isActing,           setIsActing]           = useState(false);
+    const [pendingAction,      setPendingAction]      = useState<"resolved" | "false_alarm" | null>(null);
+    const [successBanner,      setSuccessBanner]      = useState<string | null>(null);
+    const [errorBanner,        setErrorBanner]        = useState<string | null>(null);
+    const [rpiActive,          setRpiActive]          = useState(false);
+    const pendingActionRef       = useRef<"resolved" | "false_alarm" | null>(null);
+    const prevAcknowledgedAtRef  = useRef<string | null>(null);
+    const actingTimeoutRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const muteTimeoutRef         = useRef<ReturnType<typeof setTimeout> | null>(null);
     const touchStartX = useRef(0);
     const touchEndX   = useRef(0);
+
+    // Watch for RPi acknowledgement after resolve / false-alarm
+    useEffect(() => {
+        if (!pendingActionRef.current) return;
+        const ack = activeEpisode?.rpi_acknowledged_at ?? null;
+        if (ack === null || ack === prevAcknowledgedAtRef.current) return;
+        if (actingTimeoutRef.current) { clearTimeout(actingTimeoutRef.current); actingTimeoutRef.current = null; }
+        setSuccessBanner(
+            pendingActionRef.current === "resolved"
+                ? "Alert resolved — RPi confirmed"
+                : "Marked as false alarm — RPi confirmed"
+        );
+        setIsActing(false);
+        setPendingAction(null);
+        pendingActionRef.current = null;
+    }, [activeEpisode?.rpi_acknowledged_at]);
+
+    // Watch for RPi acknowledgement of mute toggle
+    useEffect(() => {
+        if (!muteTimeoutRef.current || !activeEpisode) return;
+        const expected = activeEpisode.buzzer_muted ? "muted" : "on";
+        if (activeEpisode.buzzer_status === expected) {
+            clearTimeout(muteTimeoutRef.current);
+            muteTimeoutRef.current = null;
+        }
+    }, [activeEpisode?.buzzer_status, activeEpisode?.buzzer_muted]);
+
+    // Track whether RPi has sent an update within the last 30s
+    useEffect(() => {
+        if (!activeEpisode) { setRpiActive(false); return; }
+        const remaining = Math.max(0, 30 - (Date.now() / 1000 - activeEpisode.last_updated_ts));
+        setRpiActive(remaining > 0);
+        if (remaining === 0) return;
+        const timeout = setTimeout(() => setRpiActive(false), remaining * 1000);
+        return () => clearTimeout(timeout);
+    }, [activeEpisode?.last_updated_ts]);
+
+    // Cleanup timeouts on unmount
+    useEffect(() => {
+        return () => {
+            if (actingTimeoutRef.current) clearTimeout(actingTimeoutRef.current);
+            if (muteTimeoutRef.current)   clearTimeout(muteTimeoutRef.current);
+        };
+    }, []);
+
+    const handleMuteToggle = useCallback(async () => {
+        if (!activeEpisode) return;
+        const originalMuted = activeEpisode.buzzer_muted;
+        await supabase
+            .from("alert_episodes")
+            .update({ buzzer_muted: !originalMuted } as never)
+            .eq("id", activeEpisode.id);
+        muteTimeoutRef.current = setTimeout(async () => {
+            muteTimeoutRef.current = null;
+            await supabase
+                .from("alert_episodes")
+                .update({ buzzer_muted: originalMuted } as never)
+                .eq("id", activeEpisode.id);
+            setErrorBanner("Buzzer command timed out — RPi did not respond. Reverted to previous state.");
+        }, 10000);
+    }, [activeEpisode]);
+
+    const handleResolve = useCallback(async () => {
+        if (!activeEpisode) return;
+        prevAcknowledgedAtRef.current = activeEpisode.rpi_acknowledged_at;
+        pendingActionRef.current = "resolved";
+        setPendingAction("resolved");
+        setIsActing(true);
+        await supabase
+            .from("alert_episodes")
+            .update({ status: "resolved" } as never)
+            .eq("id", activeEpisode.id);
+        actingTimeoutRef.current = setTimeout(async () => {
+            actingTimeoutRef.current = null;
+            await supabase
+                .from("alert_episodes")
+                .update({ status: "active" } as never)
+                .eq("id", activeEpisode.id);
+            setIsActing(false);
+            setPendingAction(null);
+            pendingActionRef.current = null;
+            setErrorBanner("Action timed out — RPi did not respond. Reverted to active.");
+        }, 10000);
+    }, [activeEpisode]);
+
+    const handleFalseAlarm = useCallback(async () => {
+        if (!activeEpisode) return;
+        prevAcknowledgedAtRef.current = activeEpisode.rpi_acknowledged_at;
+        pendingActionRef.current = "false_alarm";
+        setPendingAction("false_alarm");
+        setIsActing(true);
+        await supabase
+            .from("alert_episodes")
+            .update({ status: "false_alarm" } as never)
+            .eq("id", activeEpisode.id);
+        actingTimeoutRef.current = setTimeout(async () => {
+            actingTimeoutRef.current = null;
+            await supabase
+                .from("alert_episodes")
+                .update({ status: "active" } as never)
+                .eq("id", activeEpisode.id);
+            setIsActing(false);
+            setPendingAction(null);
+            pendingActionRef.current = null;
+            setErrorBanner("Action timed out — RPi did not respond. Reverted to active.");
+        }, 10000);
+    }, [activeEpisode]);
 
     const modalChartsRef = useRef<IChartApi[]>([]);
     const isSyncingRef   = useRef(false);
@@ -150,8 +271,8 @@ export default function MonitoringDashboard() {
         modalChartsRef.current = modalChartsRef.current.filter((c) => c !== chart);
     }, []);
 
-    // Build vertical line specs for modal graphs
-    const modalVerticalLines = useCallback((): VerticalLineSpec[] => {
+    // Build vertical line specs for modal graphs — stable reference until episode/transitions change
+    const modalVerticalLines = useMemo((): VerticalLineSpec[] => {
         if (!activeEpisode) return [];
         const lines: VerticalLineSpec[] = [];
 
@@ -172,7 +293,8 @@ export default function MonitoringDashboard() {
         }
 
         return lines;
-    }, [activeEpisode, transitions]);
+    // Only the timestamps and transitions affect which lines are drawn — status/buzzer changes must not invalidate this
+    }, [activeEpisode?.started_ts, activeEpisode?.last_updated_ts, transitions]);
 
     const fetchModalReadings = useCallback(async () => {
         if (!activeEpisode) return;
@@ -711,7 +833,8 @@ export default function MonitoringDashboard() {
                                                 ) : (
                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                         {STATIC_SENSORS.map((sensor) => {
-                                                            const threshold = getSensorThreshold(sensor.name, detectionStatus);
+                                                            const episodeState = activeEpisode.current_state.trim().toLowerCase().replace(" ", "_") as StatusLevel;
+                                                            const threshold = getSensorThreshold(sensor.name, episodeState);
                                                             return (
                                                             <div key={sensor.name} className="rounded-md border border-gray-200 p-3">
                                                                 <div className="flex items-center justify-between mb-1">
@@ -733,7 +856,7 @@ export default function MonitoringDashboard() {
                                                                     maxVal={sensor.maxVal}
                                                                     height={120}
                                                                     readings={modalReadings}
-                                                                    verticalLines={modalVerticalLines()}
+                                                                    verticalLines={modalVerticalLines}
                                                                     thresholdValue={threshold}
                                                                     interactive
                                                                     onChartCreated={handleModalChartCreated}
@@ -744,6 +867,120 @@ export default function MonitoringDashboard() {
                                                         })}
                                                     </div>
                                                 )}
+                                            </div>
+
+                                            {/* ── Action footer ── */}
+                                            <div className="shrink-0 border-t border-gray-100 px-6 py-3 flex flex-col gap-2">
+                                                {/* Error banner */}
+                                                {errorBanner && (
+                                                    <div className="flex items-center justify-between rounded-md bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
+                                                        <div className="flex items-center gap-2">
+                                                            <XCircle className="h-3.5 w-3.5 shrink-0" />
+                                                            {errorBanner}
+                                                        </div>
+                                                        <button onClick={() => setErrorBanner(null)} className="ml-4 text-red-400 hover:text-red-600">
+                                                            <X className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                {/* Success banner */}
+                                                {successBanner && (
+                                                    <div className="flex items-center justify-between rounded-md bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-700">
+                                                        <div className="flex items-center gap-2">
+                                                            <CheckCircle className="h-3.5 w-3.5 shrink-0" />
+                                                            {successBanner}
+                                                        </div>
+                                                        <button onClick={() => setSuccessBanner(null)} className="ml-4 text-green-500 hover:text-green-700">
+                                                            <X className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                {/* Action buttons */}
+                                                <div className="flex items-center justify-between gap-2">
+                                                    {/* Left: activity indicator */}
+                                                    {(() => {
+                                                        const dotColor =
+                                                            rpiActive && detectionStatus === "high_alert" ? "#ef4444" :
+                                                            rpiActive && detectionStatus === "warning"    ? "#f97316" :
+                                                                                                           "#eab308";
+                                                        const label = rpiActive ? "Alert Active" : "Alert Idle";
+                                                        return (
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span
+                                                                    className={rpiActive ? "motion-safe:animate-pulse" : ""}
+                                                                    style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", backgroundColor: dotColor, flexShrink: 0 }}
+                                                                />
+                                                                <span className="text-xs font-medium" style={{ color: dotColor }}>{label}</span>
+                                                            </div>
+                                                        );
+                                                    })()}
+
+                                                    {/* Right: buttons */}
+                                                    <div className="flex items-center gap-2">
+                                                        {/* Mute / Unmute — warning (disabled) and high alert (active) */}
+                                                        {(isElevatedStatus || (pendingAction !== null && ["warning", "high_alert"].includes(activeEpisode.current_state.trim().toLowerCase().replace(" ", "_")))) && (() => {
+                                                            const muted   = activeEpisode.buzzer_muted;
+                                                            const bStatus = activeEpisode.buzzer_status;
+                                                            const buzzerPending = (muted && bStatus === "on") || (!muted && bStatus === "muted");
+                                                            const isOn    = !muted && bStatus === "on";
+                                                            const isWarningOnly = detectionStatus === "warning";
+                                                            return (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    disabled={buzzerPending || isActing || isWarningOnly}
+                                                                    onClick={handleMuteToggle}
+                                                                    className="gap-1.5 text-xs"
+                                                                >
+                                                                    {buzzerPending ? (
+                                                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                                    ) : isOn ? (
+                                                                        <VolumeX className="h-3.5 w-3.5" />
+                                                                    ) : (
+                                                                        <Volume2 className="h-3.5 w-3.5" />
+                                                                    )}
+                                                                    {buzzerPending ? "Pending…" : isOn ? "Mute Alarm" : "Unmute Alarm"}
+                                                                </Button>
+                                                            );
+                                                        })()}
+
+                                                        {/* Resolve */}
+                                                        {(activeEpisode.status === "active" || pendingAction !== null) && (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                disabled={isActing || rpiActive}
+                                                                onClick={handleResolve}
+                                                                className="gap-1.5 text-xs text-green-700 border-green-300 hover:bg-green-50"
+                                                            >
+                                                                {isActing && pendingAction === "resolved"
+                                                                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                                    : <CheckCircle className="h-3.5 w-3.5" />
+                                                                }
+                                                                Mark as Resolved
+                                                            </Button>
+                                                        )}
+
+                                                        {/* False Alarm */}
+                                                        {(activeEpisode.status === "active" || pendingAction !== null) && (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                disabled={isActing || rpiActive}
+                                                                onClick={handleFalseAlarm}
+                                                                className="gap-1.5 text-xs text-muted-foreground"
+                                                            >
+                                                                {isActing && pendingAction === "false_alarm"
+                                                                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                                    : <XCircle className="h-3.5 w-3.5" />
+                                                                }
+                                                                Mark as False Alarm
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </DialogContent>
                                     </Dialog>
