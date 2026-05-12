@@ -9,6 +9,7 @@ import SensorReadingGraph, { SensorReading, VerticalLineSpec } from "@/component
 import type { IChartApi } from "lightweight-charts";
 import TrendBadge from "@/components/TrendBadge";
 import { useAlertEpisode } from "@/hooks/useAlertEpisode";
+import { useAlertSound } from "@/hooks/useAlertSound";
 import { useDeviceConnection } from "@/hooks/useDeviceConnection";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -125,6 +126,7 @@ const describeArc = (centerX: number, centerY: number, radius: number, startAngl
 export default function MonitoringDashboard() {
     const { readings } = useSensor();
     const { activeEpisode, transitions } = useAlertEpisode();
+    const { webMuted, toggleWebMuted }   = useAlertSound(activeEpisode);
     const { isDeviceConnected } = useDeviceConnection(readings);
 
     const displayReadings = isDeviceConnected ? readings : [];
@@ -507,6 +509,8 @@ export default function MonitoringDashboard() {
                             state={overlayState}
                             episode={activeEpisode}
                             animationKey={overlayAnimKey}
+                            webMuted={webMuted}
+                            onToggleWebMuted={toggleWebMuted}
                             onMinimize={() => setOverlayState("minimized")}
                             onExpand={() => { setOverlayState("open"); setOverlayAnimKey(k => k + 1); }}
                             onViewReport={() => {

@@ -28,7 +28,7 @@ export function useAlertEpisode() {
             const episode = episodeRaw as AlertEpisode | null;
 
             if (epErr) {
-                console.error("[useAlertEpisode] Episode fetch error:", epErr);
+                console.error("[useAlertEpisode] Episode fetch error:", epErr.code, epErr.message, epErr.details, epErr.hint);
                 return;
             }
 

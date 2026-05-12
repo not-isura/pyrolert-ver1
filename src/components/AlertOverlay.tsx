@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ChevronDown, Flame, Minus } from "lucide-react";
+import { AlertTriangle, ChevronDown, Flame, Minus, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { AlertEpisode } from "@/hooks/useAlertEpisode";
 
@@ -10,6 +10,8 @@ interface AlertOverlayProps {
     state: OverlayState;
     episode: AlertEpisode;
     animationKey: number;
+    webMuted: boolean;
+    onToggleWebMuted: () => void;
     onMinimize: () => void;
     onExpand: () => void;
     onViewReport: () => void;
@@ -42,6 +44,8 @@ export default function AlertOverlay({
     state,
     episode,
     animationKey,
+    webMuted,
+    onToggleWebMuted,
     onMinimize,
     onExpand,
     onViewReport,
@@ -79,13 +83,15 @@ export default function AlertOverlay({
 
     const banner = (
         <div
-            role="button"
-            tabIndex={0}
-            onClick={onExpand}
-            onKeyDown={(e) => e.key === "Enter" && onExpand()}
-            className={`w-full ${theme.bar} text-white flex items-center justify-between px-4 py-2 cursor-pointer select-none`}
+            className={`w-full ${theme.bar} text-white flex items-center justify-between px-4 py-2 select-none`}
         >
-            <div className="flex items-center gap-2">
+            <div
+                role="button"
+                tabIndex={0}
+                onClick={onExpand}
+                onKeyDown={(e) => e.key === "Enter" && onExpand()}
+                className="flex items-center gap-2 cursor-pointer flex-1"
+            >
                 {isHigh
                     ? <Flame className="h-4 w-4 shrink-0" />
                     : <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -93,7 +99,19 @@ export default function AlertOverlay({
                 <span className="text-sm font-semibold">{label}</span>
                 <span className="text-xs opacity-80">— tap to expand</span>
             </div>
-            <ChevronDown className="h-4 w-4 shrink-0" />
+            <div className="flex items-center gap-2">
+                <button
+                    onClick={(e) => { e.stopPropagation(); onToggleWebMuted(); }}
+                    className="p-1 rounded opacity-80 hover:opacity-100 transition-opacity"
+                    aria-label={webMuted ? "Unmute web alarm" : "Mute web alarm"}
+                >
+                    {webMuted
+                        ? <VolumeX className="h-4 w-4" />
+                        : <Volume2 className="h-4 w-4" />
+                    }
+                </button>
+                <ChevronDown className="h-4 w-4 shrink-0 opacity-80" />
+            </div>
         </div>
     );
 
@@ -166,7 +184,31 @@ export default function AlertOverlay({
                         </Button>
                         <Button
                             variant="outline"
-                            className={`w-full gap-1.5 ${theme.outline}`}
+                            className="w-full gap-1.5"
+                            style={{
+                                borderColor: theme.outlineBorder,
+                                color: theme.outlineText,
+                                backgroundColor: "transparent",
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = theme.outlineHover)}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                            onClick={onToggleWebMuted}
+                        >
+                            {webMuted
+                                ? <><Volume2 className="h-4 w-4" /> Unmute Alarm</>
+                                : <><VolumeX className="h-4 w-4" /> Mute Alarm</>
+                            }
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="w-full gap-1.5"
+                            style={{
+                                borderColor: theme.outlineBorder,
+                                color: theme.outlineText,
+                                backgroundColor: "transparent",
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = theme.outlineHover)}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                             onClick={onMinimize}
                         >
                             <Minus className="h-4 w-4" />
