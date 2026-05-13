@@ -40,6 +40,15 @@ export function useAlertSound(episode: AlertEpisode | null) {
         };
     }, []);
 
+    // Reset mute when episode ends so the next alert always starts unmuted
+    useEffect(() => {
+        if (!episode) {
+            setWebMuted(false);
+            try { localStorage.setItem(STORAGE_KEY, "false"); } catch {}
+            prevSeverity.current = null;
+        }
+    }, [episode]);
+
     // Auto-unmute on escalation to high_alert
     useEffect(() => {
         const severity = episode?.current_state.trim().toLowerCase().replace(/\s+/g, "_");

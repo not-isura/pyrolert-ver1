@@ -104,7 +104,9 @@ export function useAlertEpisode() {
                 (payload) => {
                     const newTrans = payload.new as AlertTransition;
                     if (newTrans.episode_id !== episodeIdRef.current) return;
-                    setTransitions((prev) => [...prev, newTrans]);
+                    setTransitions((prev) =>
+                        prev.some((t) => t.id === newTrans.id) ? prev : [...prev, newTrans]
+                    );
                 }
             )
 
