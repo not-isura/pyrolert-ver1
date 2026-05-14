@@ -56,25 +56,33 @@ export default function AlertOverlay({
     const isHigh   = severity === "high_alert";
 
     const theme = isHigh ? {
-        bar:      "bg-red-600",
-        cardBg:   "bg-red-50",
-        border:   "border-red-400",
-        iconBg:   "rgba(239, 68, 68, 0.15)",
-        iconColor: "#dc2626",
-        badge:    "bg-red-100 text-red-700",
-        title:    "text-red-700",
-        action:   "bg-red-600 hover:bg-red-700",
-        outline:  "border-red-300 text-red-700 hover:bg-red-100",
+        bar:           "bg-red-600",
+        cardBg:        "#ffffff",
+        borderColor:   "#dc2626",
+        iconBg:        "rgba(239, 68, 68, 0.10)",
+        iconColor:     "#dc2626",
+        badgeBg:       "rgba(239, 68, 68, 0.10)",
+        badgeText:     "#dc2626",
+        title:         "#111827",
+        subtitle:      "#6b7280",
+        action:        "bg-red-600 hover:bg-red-700",
+        outlineBorder: "#dc2626",
+        outlineText:   "#dc2626",
+        outlineHover:  "rgba(220, 38, 38, 0.08)",
     } : {
-        bar:      "bg-amber-500",
-        cardBg:   "bg-amber-50",
-        border:   "border-amber-400",
-        iconBg:   "rgba(245, 158, 11, 0.15)",
-        iconColor: "#d97706",
-        badge:    "bg-amber-100 text-amber-700",
-        title:    "text-amber-700",
-        action:   "bg-amber-500 hover:bg-amber-600",
-        outline:  "border-amber-300 text-amber-700 hover:bg-amber-100",
+        bar:           "bg-amber-500",
+        cardBg:        "#ffffff",
+        borderColor:   "#d97706",
+        iconBg:        "rgba(245, 158, 11, 0.10)",
+        iconColor:     "#d97706",
+        badgeBg:       "rgba(245, 158, 11, 0.10)",
+        badgeText:     "#d97706",
+        title:         "#111827",
+        subtitle:      "#6b7280",
+        action:        "bg-amber-500 hover:bg-amber-600",
+        outlineBorder: "#d97706",
+        outlineText:   "#d97706",
+        outlineHover:  "rgba(217, 119, 6, 0.08)",
     };
 
     const label          = isHigh ? "HIGH ALERT" : "WARNING";
@@ -133,8 +141,12 @@ export default function AlertOverlay({
                 {/* Slide-up card — key changes on each open/escalation to re-trigger animation */}
                 <div
                     key={animationKey}
-                    className={`w-full max-w-xs rounded-2xl border-2 shadow-2xl p-6 flex flex-col gap-5 ${theme.cardBg} ${theme.border}`}
-                    style={{ animation: "slideUpFadeIn 0.3s ease-out forwards" }}
+                    className="w-full max-w-xs rounded-2xl border-2 shadow-2xl p-6 flex flex-col gap-5"
+                    style={{
+                        animation: "slideUpFadeIn 0.3s ease-out forwards",
+                        backgroundColor: theme.cardBg,
+                        borderColor: theme.borderColor,
+                    }}
                 >
                     {/* Pulsing icon */}
                     <div className="flex justify-center">
@@ -155,7 +167,10 @@ export default function AlertOverlay({
 
                     {/* Badge */}
                     <div className="flex justify-center">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${theme.badge}`}>
+                        <span
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
+                            style={{ backgroundColor: theme.badgeBg, color: theme.badgeText }}
+                        >
                             {isHigh
                                 ? <Flame className="h-3.5 w-3.5" />
                                 : <AlertTriangle className="h-3.5 w-3.5" />
@@ -166,10 +181,10 @@ export default function AlertOverlay({
 
                     {/* Title + timestamp */}
                     <div className="text-center space-y-1">
-                        <h2 className={`text-xl font-bold ${theme.title}`}>
+                        <h2 className="text-xl font-bold" style={{ color: theme.title }}>
                             {isHigh ? "Critical Alert Detected" : "Warning Alert Detected"}
                         </h2>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs" style={{ color: theme.subtitle }}>
                             Triggered {new Date(episode.started_ts * 1000).toLocaleString()}
                         </p>
                     </div>

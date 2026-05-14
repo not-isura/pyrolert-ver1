@@ -10,6 +10,8 @@ import type { IChartApi } from "lightweight-charts";
 import TrendBadge from "@/components/TrendBadge";
 import { useAlertEpisode } from "@/hooks/useAlertEpisode";
 import { useAlertSound } from "@/hooks/useAlertSound";
+import { useHeadcount } from "@/hooks/useHeadcount";
+import type { HeadcountLog } from "@/hooks/useHeadcount";
 import { useDeviceConnection } from "@/hooks/useDeviceConnection";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,9 +26,12 @@ import {
 } from "@/components/ui/dialog";
 import {
     Archive,
+    Camera,
     CheckCircle,
     ChevronLeft,
     ChevronRight,
+    ChevronsLeft,
+    ChevronsRight,
     HelpCircle,
     Loader2,
     RefreshCw,
@@ -69,45 +74,40 @@ const getHighAlertOnlyStatus = (value: number, highAlert: number, strictGreater 
 };
 
 const STATIC_SENSORS: SensorDisplayData[] = [
-    { name: "CO",          value: "", status: "normal", dataKey: "gas_co",  color: "#ef4444", unit: "ppm",   minVal: 0,  maxVal: 100 },
-    { name: "NO2",         value: "", status: "normal", dataKey: "gas_no2", color: "#f97316", unit: "ppm",   minVal: 0,  maxVal: 5   },
-    { name: "PM2.5",       value: "", status: "normal", dataKey: "pm25",    color: "#8b5cf6", unit: "ug/m3", minVal: 0,  maxVal: 50  },
-    { name: "O2",          value: "", status: "normal", dataKey: "gas_o2",  color: "#22c55e", unit: "%",     minVal: 10, maxVal: 25  },
-    { name: "Temperature", value: "", status: "normal", dataKey: "temp_c",  color: "#3b82f6", unit: "C",     minVal: 20, maxVal: 70  },
-    { name: "Temp RoC",    value: "", status: "normal", dataKey: "temp_roc", color: "#06b6d4", unit: "C/min", minVal: -2, maxVal: 10  },
+    { name: "CO", value: "", status: "normal", dataKey: "gas_co", color: "#ef4444", unit: "ppm", minVal: 0, maxVal: 100 },
+    { name: "NO2", value: "", status: "normal", dataKey: "gas_no2", color: "#f97316", unit: "ppm", minVal: 0, maxVal: 5 },
+    { name: "PM2.5", value: "", status: "normal", dataKey: "pm25", color: "#8b5cf6", unit: "ug/m3", minVal: 0, maxVal: 50 },
+    { name: "O2", value: "", status: "normal", dataKey: "gas_o2", color: "#22c55e", unit: "%", minVal: 10, maxVal: 25 },
+    { name: "Temperature", value: "", status: "normal", dataKey: "temp_c", color: "#3b82f6", unit: "C", minVal: 20, maxVal: 70 },
+    { name: "Temp RoC", value: "", status: "normal", dataKey: "temp_roc", color: "#06b6d4", unit: "C/min", minVal: -2, maxVal: 10 },
 ];
 
 const getSensorThreshold = (sensorName: string, status: StatusLevel): number | undefined => {
     if (status !== "warning" && status !== "high_alert") return undefined;
     switch (sensorName) {
-        case "CO":          return status === "high_alert" ? 60  : 25;
-        case "NO2":         return status === "high_alert" ? 1   : 0.2;
-        case "PM2.5":       return status === "high_alert" ? 150 : 90;
-        case "O2":          return status === "high_alert" ? 18  : 19;
+        case "CO": return status === "high_alert" ? 60 : 25;
+        case "NO2": return status === "high_alert" ? 1 : 0.2;
+        case "PM2.5": return status === "high_alert" ? 150 : 90;
+        case "O2": return status === "high_alert" ? 18 : 19;
         case "Temperature": return 57.2;
-        case "Temp RoC":    return 8;
-        default:            return undefined;
+        case "Temp RoC": return 8;
+        default: return undefined;
     }
 };
 
-const STATIC_CAMERA_SNAPSHOTS = [
-    { id: "snapshot-1", label: "Snapshot 1 - 09:41 AM" },
-    { id: "snapshot-2", label: "Snapshot 2 - 09:46 AM" },
-    { id: "snapshot-3", label: "Snapshot 3 - 09:51 AM" },
-];
 
 const statusConfig: Record<StatusLevel, { color: string; label: string }> = {
-    normal:       { color: "hsl(var(--brand-green))",  label: "Normal"       },
-    warning:      { color: "hsl(var(--brand-orange))", label: "Warning"      },
-    high_alert:   { color: "hsl(var(--brand-red))",    label: "High Alert"   },
-    disconnected: { color: "#9CA3AF",                  label: "Disconnected" },
+    normal: { color: "hsl(var(--brand-green))", label: "Normal" },
+    warning: { color: "hsl(var(--brand-orange))", label: "Warning" },
+    high_alert: { color: "hsl(var(--brand-red))", label: "High Alert" },
+    disconnected: { color: "#9CA3AF", label: "Disconnected" },
 };
 
 const alertStatusBadge: Record<string, { label: string; className: string }> = {
-    active:      { label: "Active",      className: "text-amber-700 bg-amber-50 border border-amber-200"   },
-    resolved:    { label: "Resolved",    className: "text-green-700 bg-green-50 border border-green-200"   },
-    false_alarm: { label: "False Alarm", className: "text-gray-600  bg-gray-50  border border-gray-200"    },
-    archived:    { label: "Archived",    className: "text-gray-400  bg-gray-50  border border-gray-100"    },
+    active: { label: "Active", className: "text-amber-700 bg-amber-50 border border-amber-200" },
+    resolved: { label: "Resolved", className: "text-green-700 bg-green-50 border border-green-200" },
+    false_alarm: { label: "False Alarm", className: "text-gray-600  bg-gray-50  border border-gray-200" },
+    archived: { label: "Archived", className: "text-gray-400  bg-gray-50  border border-gray-100" },
 };
 
 const polarToCartesian = (centerX: number, centerY: number, radius: number, angleInDegrees: number) => {
@@ -117,7 +117,7 @@ const polarToCartesian = (centerX: number, centerY: number, radius: number, angl
 
 const describeArc = (centerX: number, centerY: number, radius: number, startAngle: number, endAngle: number) => {
     const start = polarToCartesian(centerX, centerY, radius, endAngle);
-    const end   = polarToCartesian(centerX, centerY, radius, startAngle);
+    const end = polarToCartesian(centerX, centerY, radius, startAngle);
     const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
     return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`;
 };
@@ -126,32 +126,43 @@ const describeArc = (centerX: number, centerY: number, radius: number, startAngl
 export default function MonitoringDashboard() {
     const { readings } = useSensor();
     const { activeEpisode, transitions } = useAlertEpisode();
-    const { webMuted, toggleWebMuted }   = useAlertSound(activeEpisode);
+    const { webMuted, toggleWebMuted } = useAlertSound(activeEpisode);
+    const { cardLogs, allLogs, totalCaptured, requesting, requestCapture } = useHeadcount(activeEpisode?.id ?? null);
     const { isDeviceConnected } = useDeviceConnection(readings);
+
+    // Reset both carousels to index 0 when a new capture arrives
+    useEffect(() => {
+        setCurrentImageIndex(0);
+        setFsImageIndex(0);
+    }, [allLogs.length]);
 
     const displayReadings = isDeviceConnected ? readings : [];
     const latestReading = isDeviceConnected && readings.length > 0 ? readings[readings.length - 1] : null;
 
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const [isFullscreen, setIsFullscreen]           = useState(false);
-    const [isReportOpen,  setIsReportOpen]          = useState(false);
-    const [modalReadings, setModalReadings]         = useState<SensorReading[]>([]);
-    const [modalLoading,  setModalLoading]          = useState(false);
-    const [isActing,           setIsActing]           = useState(false);
-    const [pendingAction,      setPendingAction]      = useState<"resolved" | "false_alarm" | null>(null);
-    const [successBanner,      setSuccessBanner]      = useState<string | null>(null);
-    const [errorBanner,        setErrorBanner]        = useState<string | null>(null);
-    const [rpiActive,          setRpiActive]          = useState(false);
-    const [isDismissing,       setIsDismissing]       = useState(false);
-    const [overlayState,       setOverlayState]       = useState<OverlayState>("hidden");
-    const [overlayAnimKey,     setOverlayAnimKey]     = useState(0);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0); // card carousel
+    const [fsImageIndex, setFsImageIndex] = useState(0);           // fullscreen modal
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [fsImageLoading, setFsImageLoading] = useState(false);
+    const [cardImageLoading, setCardImageLoading] = useState(false);
+    const [imageLightbox, setImageLightbox] = useState(false);
+    const [isReportOpen, setIsReportOpen] = useState(false);
+    const [modalReadings, setModalReadings] = useState<SensorReading[]>([]);
+    const [modalLoading, setModalLoading] = useState(false);
+    const [isActing, setIsActing] = useState(false);
+    const [pendingAction, setPendingAction] = useState<"resolved" | "false_alarm" | null>(null);
+    const [successBanner, setSuccessBanner] = useState<string | null>(null);
+    const [errorBanner, setErrorBanner] = useState<string | null>(null);
+    const [rpiActive, setRpiActive] = useState(false);
+    const [isDismissing, setIsDismissing] = useState(false);
+    const [overlayState, setOverlayState] = useState<OverlayState>("hidden");
+    const [overlayAnimKey, setOverlayAnimKey] = useState(0);
     const overlaySeverityRef = useRef(0);
-    const pendingActionRef       = useRef<"resolved" | "false_alarm" | null>(null);
-    const prevAcknowledgedAtRef  = useRef<string | null>(null);
-    const actingTimeoutRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const muteTimeoutRef         = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const pendingActionRef = useRef<"resolved" | "false_alarm" | null>(null);
+    const prevAcknowledgedAtRef = useRef<string | null>(null);
+    const actingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const muteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const touchStartX = useRef(0);
-    const touchEndX   = useRef(0);
+    const touchEndX = useRef(0);
 
     // Watch for RPi acknowledgement after resolve / false-alarm
     useEffect(() => {
@@ -193,7 +204,7 @@ export default function MonitoringDashboard() {
     useEffect(() => {
         return () => {
             if (actingTimeoutRef.current) clearTimeout(actingTimeoutRef.current);
-            if (muteTimeoutRef.current)   clearTimeout(muteTimeoutRef.current);
+            if (muteTimeoutRef.current) clearTimeout(muteTimeoutRef.current);
         };
     }, []);
 
@@ -303,7 +314,7 @@ export default function MonitoringDashboard() {
     }, [activeEpisode?.status]);
 
     const modalChartsRef = useRef<IChartApi[]>([]);
-    const isSyncingRef   = useRef(false);
+    const isSyncingRef = useRef(false);
 
     const handleModalChartCreated = useCallback((chart: IChartApi) => {
         modalChartsRef.current.push(chart);
@@ -343,7 +354,7 @@ export default function MonitoringDashboard() {
         }
 
         return lines;
-    // Only the timestamps and transitions affect which lines are drawn — status/buzzer changes must not invalidate this
+        // Only the timestamps and transitions affect which lines are drawn — status/buzzer changes must not invalidate this
     }, [activeEpisode?.started_ts, activeEpisode?.last_updated_ts, transitions]);
 
     const fetchModalReadings = useCallback(async () => {
@@ -365,31 +376,31 @@ export default function MonitoringDashboard() {
             const s = activeEpisode.current_state.trim().toLowerCase().replace(" ", "_");
             return s === "high_alert" ? "high_alert" : "warning";
         })() :
-        !isDeviceConnected ? "disconnected" :
-                             "normal";
+            !isDeviceConnected ? "disconnected" :
+                "normal";
 
     const currentStatusConfig = statusConfig[detectionStatus] ?? statusConfig.normal;
-    const isElevatedStatus    = detectionStatus === "warning" || detectionStatus === "high_alert";
-    const gaugeNeedleAngle    =
-        detectionStatus === "warning"      ? 0   :
-        detectionStatus === "high_alert"   ? 75  :
-        detectionStatus === "disconnected" ? -90 :
-                                             -75;
+    const isElevatedStatus = detectionStatus === "warning" || detectionStatus === "high_alert";
+    const gaugeNeedleAngle =
+        detectionStatus === "warning" ? 0 :
+            detectionStatus === "high_alert" ? 75 :
+                detectionStatus === "disconnected" ? -90 :
+                    -75;
 
     // Live sensor values from the latest reading
     const liveValues = {
-        co:     typeof latestReading?.gas_co   === "number" ? latestReading.gas_co   : null,
-        no2:    typeof latestReading?.gas_no2  === "number" ? latestReading.gas_no2  : null,
-        pm25:   typeof latestReading?.pm25     === "number" ? latestReading.pm25     : null,
-        o2:     typeof latestReading?.gas_o2   === "number" ? latestReading.gas_o2   : null,
-        tempC:  typeof latestReading?.temp_c   === "number" ? latestReading.temp_c   : null,
+        co: typeof latestReading?.gas_co === "number" ? latestReading.gas_co : null,
+        no2: typeof latestReading?.gas_no2 === "number" ? latestReading.gas_no2 : null,
+        pm25: typeof latestReading?.pm25 === "number" ? latestReading.pm25 : null,
+        o2: typeof latestReading?.gas_o2 === "number" ? latestReading.gas_o2 : null,
+        tempC: typeof latestReading?.temp_c === "number" ? latestReading.temp_c : null,
         tempRoc: typeof latestReading?.temp_roc === "number" ? latestReading.temp_roc : null,
     };
 
     const formatLastUpdated = (reading: SensorReading | null) => {
         if (!reading) return "—";
         if (reading.recorded_at) return new Date(reading.recorded_at).toLocaleString();
-        if (reading.created_at)  return new Date(reading.created_at).toLocaleString();
+        if (reading.created_at) return new Date(reading.created_at).toLocaleString();
         if (typeof reading.ts === "number") return new Date(reading.ts * 1000).toLocaleString();
         return "—";
     };
@@ -409,29 +420,29 @@ export default function MonitoringDashboard() {
         const rawValue = reading[sensor.dataKey];
         if (typeof rawValue !== "number") return "normal";
         switch (sensor.name) {
-            case "CO":          return getHigherIsWorseStatus(rawValue, 60, 25);
-            case "NO2":         return getHigherIsWorseStatus(rawValue, 1, 0.2);
-            case "PM2.5":       return getHigherIsWorseStatus(rawValue, 150, 90);
-            case "O2":          return getLowerIsWorseStatus(rawValue, 18, 19);
+            case "CO": return getHigherIsWorseStatus(rawValue, 60, 25);
+            case "NO2": return getHigherIsWorseStatus(rawValue, 1, 0.2);
+            case "PM2.5": return getHigherIsWorseStatus(rawValue, 150, 90);
+            case "O2": return getLowerIsWorseStatus(rawValue, 18, 19);
             case "Temperature": return getHighAlertOnlyStatus(rawValue, 57.2, true);
-            case "Temp RoC":    return getHighAlertOnlyStatus(rawValue, 8);
-            default:            return "normal";
+            case "Temp RoC": return getHighAlertOnlyStatus(rawValue, 8);
+            default: return "normal";
         }
     };
 
     useEffect(() => {
         return () => {
-            document.documentElement.style.overflow  = "";
-            document.documentElement.style.position  = "";
-            document.documentElement.style.width     = "";
-            document.documentElement.style.height    = "";
-            document.body.style.overflow  = "";
-            document.body.style.position  = "";
-            document.body.style.top       = "";
-            document.body.style.left      = "";
-            document.body.style.right     = "";
-            document.body.style.width     = "";
-            document.body.style.height    = "";
+            document.documentElement.style.overflow = "";
+            document.documentElement.style.position = "";
+            document.documentElement.style.width = "";
+            document.documentElement.style.height = "";
+            document.body.style.overflow = "";
+            document.body.style.position = "";
+            document.body.style.top = "";
+            document.body.style.left = "";
+            document.body.style.right = "";
+            document.body.style.width = "";
+            document.body.style.height = "";
         };
     }, []);
 
@@ -441,61 +452,112 @@ export default function MonitoringDashboard() {
             if (!(e.target as HTMLElement).closest("[data-swipeable='true']")) e.preventDefault();
         };
         const preventGesture = (e: Event) => e.preventDefault();
-        document.addEventListener("touchmove",     preventScroll,  { passive: false });
-        document.addEventListener("gesturestart",  preventGesture, { passive: false });
+        document.addEventListener("touchmove", preventScroll, { passive: false });
+        document.addEventListener("gesturestart", preventGesture, { passive: false });
         document.addEventListener("gesturechange", preventGesture, { passive: false });
-        document.addEventListener("gestureend",    preventGesture, { passive: false });
+        document.addEventListener("gestureend", preventGesture, { passive: false });
         return () => {
-            document.removeEventListener("touchmove",     preventScroll);
-            document.removeEventListener("gesturestart",  preventGesture);
+            document.removeEventListener("touchmove", preventScroll);
+            document.removeEventListener("gesturestart", preventGesture);
             document.removeEventListener("gesturechange", preventGesture);
-            document.removeEventListener("gestureend",    preventGesture);
+            document.removeEventListener("gestureend", preventGesture);
         };
     }, [isFullscreen]);
 
-    const handlePrevImage = () =>
-        setCurrentImageIndex((prev) => prev === 0 ? STATIC_CAMERA_SNAPSHOTS.length - 1 : prev - 1);
+    const captureListRef = useRef<HTMLDivElement>(null);
 
-    const handleNextImage = () =>
-        setCurrentImageIndex((prev) => prev === STATIC_CAMERA_SNAPSHOTS.length - 1 ? 0 : prev + 1);
+    // Scroll active capture into view when fullscreen index changes
+    useEffect(() => {
+        if (!captureListRef.current) return;
+        const activeEl = captureListRef.current.querySelector('[data-active="true"]');
+        activeEl?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }, [fsImageIndex]);
+
+    // Show spinner when navigating in fullscreen
+    useEffect(() => {
+        if (isFullscreen) setFsImageLoading(true);
+    }, [fsImageIndex, isFullscreen]);
+
+    // Show spinner when navigating in card
+    useEffect(() => {
+        if (cardLogs[currentImageIndex]?.image_url) setCardImageLoading(true);
+    }, [currentImageIndex]);
+
+    // Card carousel handlers
+    const handlePrevImage = (len: number) =>
+        setCurrentImageIndex((prev) => prev === 0 ? len - 1 : prev - 1);
+
+    const handleNextImage = (len: number) =>
+        setCurrentImageIndex((prev) => prev === len - 1 ? 0 : prev + 1);
+
+    // Fullscreen modal handlers
+    const handleFsPrevImage = () =>
+        setFsImageIndex((prev) => prev === 0 ? allLogs.length - 1 : prev - 1);
+
+    const handleFsNextImage = () =>
+        setFsImageIndex((prev) => prev === allLogs.length - 1 ? 0 : prev + 1);
+
+    const handlePrevDetected = () => {
+        const len = allLogs.length;
+        for (let i = 1; i <= len; i++) {
+            const idx = (fsImageIndex - i + len) % len;
+            if (allLogs[idx].total_count > 0) { setFsImageIndex(idx); return; }
+        }
+    };
+
+    const handleNextDetected = () => {
+        const len = allLogs.length;
+        for (let i = 1; i <= len; i++) {
+            const idx = (fsImageIndex + i) % len;
+            if (allLogs[idx].total_count > 0) { setFsImageIndex(idx); return; }
+        }
+    };
 
     const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX; };
-    const handleTouchMove  = (e: React.TouchEvent) => { touchEndX.current   = e.touches[0].clientX; };
-    const handleTouchEnd   = () => {
-        if (touchStartX.current - touchEndX.current > 50)  handleNextImage();
-        if (touchStartX.current - touchEndX.current < -50) handlePrevImage();
+    const handleTouchMove = (e: React.TouchEvent) => { touchEndX.current = e.touches[0].clientX; };
+    const handleTouchEnd = () => {
+        if (isFullscreen) {
+            if (touchStartX.current - touchEndX.current > 50) handleFsNextImage();
+            if (touchStartX.current - touchEndX.current < -50) handleFsPrevImage();
+        } else {
+            const len = cardLogs.length;
+            if (touchStartX.current - touchEndX.current > 50) handleNextImage(len);
+            if (touchStartX.current - touchEndX.current < -50) handlePrevImage(len);
+        }
     };
 
     const openFullscreen = () => {
+        setFsImageIndex(currentImageIndex);
         setIsFullscreen(true);
         const scrollY = window.scrollY;
-        document.documentElement.style.overflow  = "hidden";
-        document.documentElement.style.position  = "fixed";
-        document.documentElement.style.width     = "100%";
-        document.documentElement.style.height    = "100%";
-        document.body.style.overflow  = "hidden";
-        document.body.style.position  = "fixed";
-        document.body.style.top       = `-${scrollY}px`;
-        document.body.style.left      = "0";
-        document.body.style.right     = "0";
-        document.body.style.width     = "100%";
-        document.body.style.height    = "100%";
+        document.documentElement.style.overflow = "hidden";
+        document.documentElement.style.position = "fixed";
+        document.documentElement.style.width = "100%";
+        document.documentElement.style.height = "100%";
+        document.body.style.overflow = "hidden";
+        document.body.style.position = "fixed";
+        document.body.style.top = `-${scrollY}px`;
+        document.body.style.left = "0";
+        document.body.style.right = "0";
+        document.body.style.width = "100%";
+        document.body.style.height = "100%";
     };
 
     const closeFullscreen = () => {
         setIsFullscreen(false);
+        setFsImageIndex(0);
         const scrollY = document.body.style.top;
-        document.documentElement.style.overflow  = "";
-        document.documentElement.style.position  = "";
-        document.documentElement.style.width     = "";
-        document.documentElement.style.height    = "";
-        document.body.style.overflow  = "";
-        document.body.style.position  = "";
-        document.body.style.top       = "";
-        document.body.style.left      = "";
-        document.body.style.right     = "";
-        document.body.style.width     = "";
-        document.body.style.height    = "";
+        document.documentElement.style.overflow = "";
+        document.documentElement.style.position = "";
+        document.documentElement.style.width = "";
+        document.documentElement.style.height = "";
+        document.body.style.overflow = "";
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.left = "";
+        document.body.style.right = "";
+        document.body.style.width = "";
+        document.body.style.height = "";
         window.scrollTo(0, parseInt(scrollY || "0", 10) * -1);
     };
 
@@ -551,10 +613,10 @@ export default function MonitoringDashboard() {
                                 </thead>
                                 <tbody>
                                     {[
-                                        { bg: "#F3F4F6", color: "#9CA3AF",                   label: "Offline",    desc: "The Pyrolert device is not connected or has not sent data in the last 30 seconds." },
-                                        { bg: "#D5F5DA", color: "hsl(var(--brand-green))",   label: "Normal",     desc: "All sensor readings are within safe operating ranges." },
-                                        { bg: "#FFF4E5", color: "hsl(var(--brand-orange))",  label: "Warning",    desc: "One or more readings have exceeded an early-warning threshold. Monitor closely." },
-                                        { bg: "#FFE5E5", color: "hsl(var(--brand-red))",     label: "High Alert", desc: "One or more readings have exceeded a critical threshold. Immediate action may be required." },
+                                        { bg: "#F3F4F6", color: "#9CA3AF", label: "Offline", desc: "The Pyrolert device is not connected or has not sent data in the last 30 seconds." },
+                                        { bg: "#D5F5DA", color: "hsl(var(--brand-green))", label: "Normal", desc: "All sensor readings are within safe operating ranges." },
+                                        { bg: "#FFF4E5", color: "hsl(var(--brand-orange))", label: "Warning", desc: "One or more readings have exceeded an early-warning threshold. Monitor closely." },
+                                        { bg: "#FFE5E5", color: "hsl(var(--brand-red))", label: "High Alert", desc: "One or more readings have exceeded a critical threshold. Immediate action may be required." },
                                     ].map(({ bg, color, label, desc }) => (
                                         <tr key={label} className="border-b border-gray-50">
                                             <td className="py-2 pr-4">
@@ -577,46 +639,46 @@ export default function MonitoringDashboard() {
                                     {
                                         name: "CO (Carbon Monoxide)",
                                         rows: [
-                                            { label: "Normal",     desc: "Below 25 ppm — safe ambient level." },
-                                            { label: "Warning",    desc: "25 – 59 ppm — elevated; prolonged exposure is harmful." },
+                                            { label: "Normal", desc: "Below 25 ppm — safe ambient level." },
+                                            { label: "Warning", desc: "25 – 59 ppm — elevated; prolonged exposure is harmful." },
                                             { label: "High Alert", desc: "≥ 60 ppm — dangerous concentration; evacuate immediately." },
                                         ],
                                     },
                                     {
                                         name: "NO2 (Nitrogen Dioxide)",
                                         rows: [
-                                            { label: "Normal",     desc: "Below 0.2 ppm — safe ambient level." },
-                                            { label: "Warning",    desc: "0.2 – 0.99 ppm — irritant; sensitive individuals at risk." },
+                                            { label: "Normal", desc: "Below 0.2 ppm — safe ambient level." },
+                                            { label: "Warning", desc: "0.2 – 0.99 ppm — irritant; sensitive individuals at risk." },
                                             { label: "High Alert", desc: "≥ 1 ppm — hazardous; immediate ventilation required." },
                                         ],
                                     },
                                     {
                                         name: "PM2.5 (Fine Particulate Matter)",
                                         rows: [
-                                            { label: "Normal",     desc: "Below 90 µg/m³ — acceptable air quality." },
-                                            { label: "Warning",    desc: "90 – 149 µg/m³ — unhealthy for sensitive groups." },
+                                            { label: "Normal", desc: "Below 90 µg/m³ — acceptable air quality." },
+                                            { label: "Warning", desc: "90 – 149 µg/m³ — unhealthy for sensitive groups." },
                                             { label: "High Alert", desc: "≥ 150 µg/m³ — very unhealthy; reduce exposure." },
                                         ],
                                     },
                                     {
                                         name: "O2 (Oxygen)",
                                         rows: [
-                                            { label: "Normal",     desc: "≥ 19% — normal oxygen concentration." },
-                                            { label: "Warning",    desc: "18 – 18.99% — mildly oxygen-deficient environment." },
+                                            { label: "Normal", desc: "≥ 19% — normal oxygen concentration." },
+                                            { label: "Warning", desc: "18 – 18.99% — mildly oxygen-deficient environment." },
                                             { label: "High Alert", desc: "Below 18% — oxygen-deficient; serious health risk." },
                                         ],
                                     },
                                     {
                                         name: "Temperature",
                                         rows: [
-                                            { label: "Normal",     desc: "≤ 57.2°C — within expected operating range." },
+                                            { label: "Normal", desc: "≤ 57.2°C — within expected operating range." },
                                             { label: "High Alert", desc: "> 57.2°C — critical temperature; potential fire risk." },
                                         ],
                                     },
                                     {
                                         name: "Temp RoC (Temperature Rate of Change)",
                                         rows: [
-                                            { label: "Normal",     desc: "Below 8°C/min — temperature rising at a safe rate." },
+                                            { label: "Normal", desc: "Below 8°C/min — temperature rising at a safe rate." },
                                             { label: "High Alert", desc: "≥ 8°C/min — rapid temperature rise; potential fire indicator." },
                                         ],
                                     },
@@ -633,9 +695,9 @@ export default function MonitoringDashboard() {
                                             <tbody>
                                                 {rows.map(({ label, desc }) => {
                                                     const cfg =
-                                                        label === "Normal"     ? { bg: "#D5F5DA", color: "hsl(var(--brand-green))"  } :
-                                                        label === "Warning"    ? { bg: "#FFF4E5", color: "hsl(var(--brand-orange))" } :
-                                                                                 { bg: "#FFE5E5", color: "hsl(var(--brand-red))"    };
+                                                        label === "Normal" ? { bg: "#D5F5DA", color: "hsl(var(--brand-green))" } :
+                                                            label === "Warning" ? { bg: "#FFF4E5", color: "hsl(var(--brand-orange))" } :
+                                                                { bg: "#FFE5E5", color: "hsl(var(--brand-red))" };
                                                     return (
                                                         <tr key={label} className="border-b border-gray-50">
                                                             <td className="py-1.5 pr-4">
@@ -670,8 +732,8 @@ export default function MonitoringDashboard() {
                             <CardContent className="px-4 pb-3 flex flex-col items-center gap-0">
                                 <svg viewBox="0 0 260 135" className="w-48" aria-label="Detection status gauge">
                                     <path d={describeArc(130, 108, 95, -90, -30)} stroke="#22c55e" strokeWidth="18" fill="none" strokeLinecap="round" />
-                                    <path d={describeArc(130, 108, 95, -30,  30)} stroke="#f59e0b" strokeWidth="18" fill="none" strokeLinecap="round" />
-                                    <path d={describeArc(130, 108, 95,  30,  90)} stroke="#ef4444" strokeWidth="18" fill="none" strokeLinecap="round" />
+                                    <path d={describeArc(130, 108, 95, -30, 30)} stroke="#f59e0b" strokeWidth="18" fill="none" strokeLinecap="round" />
+                                    <path d={describeArc(130, 108, 95, 30, 90)} stroke="#ef4444" strokeWidth="18" fill="none" strokeLinecap="round" />
                                     <g
                                         className="transition-transform duration-700 ease-in-out"
                                         style={{ transform: `rotate(${gaugeNeedleAngle}deg)`, transformOrigin: "130px 108px" }}
@@ -679,7 +741,7 @@ export default function MonitoringDashboard() {
                                         <path d="M 130 54 L 120 108 L 140 108 Z" fill="#000000" />
                                     </g>
                                     <circle cx="130" cy="108" r="10" fill="#000000" />
-                                    <circle cx="130" cy="108" r="5"  fill="hsl(var(--card))" />
+                                    <circle cx="130" cy="108" r="5" fill="hsl(var(--card))" />
                                 </svg>
                                 <p
                                     className={`text-2xl font-bold -mt-2 ${isElevatedStatus ? "motion-safe:animate-pulse" : ""}`}
@@ -742,350 +804,352 @@ export default function MonitoringDashboard() {
                                             setIsReportOpen(open);
                                             if (open) fetchModalReadings();
                                         }}>
-                                        <DialogTrigger asChild>
-                                            <Button variant="outline" size="sm" className="flex-1">
-                                                View Report
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent className="max-w-5xl h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
-                                            {/* ── Sticky header ── */}
-                                            <div className="shrink-0 px-6 pt-6 pb-4 border-b border-gray-100 pr-14 flex flex-col gap-3">
-                                                <div className="flex items-center gap-2">
-                                                    <DialogTitle className="text-lg font-bold text-brand-blue">Alert Report</DialogTitle>
-                                                    {/* Nested graph guide */}
-                                                    <Dialog>
-                                                        <DialogTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="rounded-full h-6 w-6 text-muted-foreground hover:text-brand-blue" aria-label="Graph guide">
-                                                                <HelpCircle className="h-4 w-4" />
-                                                            </Button>
-                                                        </DialogTrigger>
-                                                        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-                                                            <DialogHeader>
-                                                                <DialogTitle>Graph Guide</DialogTitle>
-                                                                <DialogDescription>Reference for vertical and horizontal lines shown in sensor graphs.</DialogDescription>
-                                                            </DialogHeader>
+                                            <DialogTrigger asChild>
+                                                <Button variant="outline" size="sm" className="flex-1">
+                                                    View Report
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent className="max-w-5xl h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
+                                                {/* ── Sticky header ── */}
+                                                <div className="shrink-0 px-6 pt-6 pb-4 border-b border-gray-100 pr-14 flex flex-col gap-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <DialogTitle className="text-lg font-bold text-brand-blue">Alert Report</DialogTitle>
+                                                        {/* Nested graph guide */}
+                                                        <Dialog>
+                                                            <DialogTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="rounded-full h-6 w-6 text-muted-foreground hover:text-brand-blue" aria-label="Graph guide">
+                                                                    <HelpCircle className="h-4 w-4" />
+                                                                </Button>
+                                                            </DialogTrigger>
+                                                            <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+                                                                <DialogHeader>
+                                                                    <DialogTitle>Graph Guide</DialogTitle>
+                                                                    <DialogDescription>Reference for vertical and horizontal lines shown in sensor graphs.</DialogDescription>
+                                                                </DialogHeader>
 
-                                                            {/* Vertical lines */}
-                                                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Vertical Lines</p>
-                                                            <table className="w-full text-sm border-collapse">
-                                                                <thead>
-                                                                    <tr className="border-b border-gray-100">
-                                                                        <th className="text-left py-1.5 pr-4 text-xs font-semibold text-muted-foreground w-24">Line</th>
-                                                                        <th className="text-left py-1.5 pr-4 text-xs font-semibold text-muted-foreground w-28">Style</th>
-                                                                        <th className="text-left py-1.5 text-xs font-semibold text-muted-foreground">Description</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    {[
-                                                                        {
-                                                                            label: "Alert Start",
-                                                                            color: "#ef4444",
-                                                                            dashed: false,
-                                                                            desc: "Marks triggered_at — the moment the alert episode began.",
-                                                                        },
-                                                                        {
-                                                                            label: "Transition",
-                                                                            color: "#f97316",
-                                                                            dashed: true,
-                                                                            desc: "Marks when the alert escalated from Warning to High Alert.",
-                                                                        },
-                                                                        {
-                                                                            label: "Last Active",
-                                                                            color: "#94a3b8",
-                                                                            dashed: false,
-                                                                            desc: "Marks last_updated_ts — the last recorded update of the active episode.",
-                                                                        },
-                                                                    ].map(({ label, color, dashed, desc }) => (
-                                                                        <tr key={label} className="border-b border-gray-50">
-                                                                            <td className="py-2 pr-4 text-xs font-medium">{label}</td>
+                                                                {/* Vertical lines */}
+                                                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Vertical Lines</p>
+                                                                <table className="w-full text-sm border-collapse">
+                                                                    <thead>
+                                                                        <tr className="border-b border-gray-100">
+                                                                            <th className="text-left py-1.5 pr-4 text-xs font-semibold text-muted-foreground w-24">Line</th>
+                                                                            <th className="text-left py-1.5 pr-4 text-xs font-semibold text-muted-foreground w-28">Style</th>
+                                                                            <th className="text-left py-1.5 text-xs font-semibold text-muted-foreground">Description</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {[
+                                                                            {
+                                                                                label: "Alert Start",
+                                                                                color: "#ef4444",
+                                                                                dashed: false,
+                                                                                desc: "Marks triggered_at — the moment the alert episode began.",
+                                                                            },
+                                                                            {
+                                                                                label: "Transition",
+                                                                                color: "#f97316",
+                                                                                dashed: true,
+                                                                                desc: "Marks when the alert escalated from Warning to High Alert.",
+                                                                            },
+                                                                            {
+                                                                                label: "Last Active",
+                                                                                color: "#94a3b8",
+                                                                                dashed: false,
+                                                                                desc: "Marks last_updated_ts — the last recorded update of the active episode.",
+                                                                            },
+                                                                        ].map(({ label, color, dashed, desc }) => (
+                                                                            <tr key={label} className="border-b border-gray-50">
+                                                                                <td className="py-2 pr-4 text-xs font-medium">{label}</td>
+                                                                                <td className="py-2 pr-4">
+                                                                                    <svg width="60" height="14" aria-hidden="true">
+                                                                                        <line
+                                                                                            x1="0" y1="7" x2="60" y2="7"
+                                                                                            stroke={color}
+                                                                                            strokeWidth="2"
+                                                                                            strokeDasharray={dashed ? "4 3" : undefined}
+                                                                                        />
+                                                                                    </svg>
+                                                                                </td>
+                                                                                <td className="py-2 text-xs text-muted-foreground">{desc}</td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+
+                                                                <div className="border-t border-gray-100 my-2" />
+
+                                                                {/* Horizontal line */}
+                                                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Horizontal Line</p>
+                                                                <table className="w-full text-sm border-collapse">
+                                                                    <thead>
+                                                                        <tr className="border-b border-gray-100">
+                                                                            <th className="text-left py-1.5 pr-4 text-xs font-semibold text-muted-foreground w-24">Line</th>
+                                                                            <th className="text-left py-1.5 pr-4 text-xs font-semibold text-muted-foreground w-28">Style</th>
+                                                                            <th className="text-left py-1.5 text-xs font-semibold text-muted-foreground">Description</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        <tr className="border-b border-gray-50">
+                                                                            <td className="py-2 pr-4 text-xs font-medium">Threshold</td>
                                                                             <td className="py-2 pr-4">
                                                                                 <svg width="60" height="14" aria-hidden="true">
-                                                                                    <line
-                                                                                        x1="0" y1="7" x2="60" y2="7"
-                                                                                        stroke={color}
-                                                                                        strokeWidth="2"
-                                                                                        strokeDasharray={dashed ? "4 3" : undefined}
-                                                                                    />
+                                                                                    <line x1="0" y1="7" x2="60" y2="7" stroke="#f59e0b" strokeWidth="2" strokeDasharray="4 3" />
                                                                                 </svg>
                                                                             </td>
-                                                                            <td className="py-2 text-xs text-muted-foreground">{desc}</td>
+                                                                            <td className="py-2 text-xs text-muted-foreground">
+                                                                                The alert threshold for this sensor. For Warning status, shows the warning threshold; for High Alert, shows the critical threshold. Temperature and Temp RoC always show the High Alert threshold.
+                                                                            </td>
                                                                         </tr>
-                                                                    ))}
-                                                                </tbody>
-                                                            </table>
-
-                                                            <div className="border-t border-gray-100 my-2" />
-
-                                                            {/* Horizontal line */}
-                                                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Horizontal Line</p>
-                                                            <table className="w-full text-sm border-collapse">
-                                                                <thead>
-                                                                    <tr className="border-b border-gray-100">
-                                                                        <th className="text-left py-1.5 pr-4 text-xs font-semibold text-muted-foreground w-24">Line</th>
-                                                                        <th className="text-left py-1.5 pr-4 text-xs font-semibold text-muted-foreground w-28">Style</th>
-                                                                        <th className="text-left py-1.5 text-xs font-semibold text-muted-foreground">Description</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    <tr className="border-b border-gray-50">
-                                                                        <td className="py-2 pr-4 text-xs font-medium">Threshold</td>
-                                                                        <td className="py-2 pr-4">
-                                                                            <svg width="60" height="14" aria-hidden="true">
-                                                                                <line x1="0" y1="7" x2="60" y2="7" stroke="#f59e0b" strokeWidth="2" strokeDasharray="4 3" />
-                                                                            </svg>
-                                                                        </td>
-                                                                        <td className="py-2 text-xs text-muted-foreground">
-                                                                            The alert threshold for this sensor. For Warning status, shows the warning threshold; for High Alert, shows the critical threshold. Temperature and Temp RoC always show the High Alert threshold.
-                                                                        </td>
-                                                                    </tr>
-                                                                </tbody>
-                                                            </table>
-                                                        </DialogContent>
-                                                    </Dialog>
-                                                </div>
-
-                                                <div className="flex items-start gap-6">
-                                                    {/* Left: status + timestamps */}
-                                                    <div className="shrink-0 flex flex-col gap-1.5">
-                                                        {[
-                                                            { label: "Current Status", content: (() => {
-                                                                const epState = activeEpisode.current_state.trim().toLowerCase().replace(" ", "_") as StatusLevel;
-                                                                const epConfig = statusConfig[epState] ?? statusConfig.normal;
-                                                                const shouldPulse = activeEpisode.status === "active" && (epState === "warning" || epState === "high_alert");
-                                                                return (
-                                                                    <span className={`text-xs font-bold ${shouldPulse ? "motion-safe:animate-pulse" : ""}`} style={{ color: epConfig.color }}>
-                                                                        {epConfig.label.toUpperCase()}
-                                                                    </span>
-                                                                );
-                                                            })()},
-                                                            { label: "Triggered At", content: <span className="text-xs">{new Date(activeEpisode.started_ts * 1000).toLocaleString()}</span> },
-                                                            { label: "Last Updated",  content: <span className="text-xs">{new Date(activeEpisode.last_updated_ts * 1000).toLocaleString()}</span> },
-                                                        ].map(({ label, content }) => (
-                                                            <div key={label} className="flex items-center gap-3 text-xs">
-                                                                <span className="text-muted-foreground w-24 shrink-0">{label}</span>
-                                                                {content}
-                                                            </div>
-                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </DialogContent>
+                                                        </Dialog>
                                                     </div>
 
-                                                    <div className="w-px self-stretch bg-gray-200 shrink-0" />
-
-                                                    {/* Right: alert state history */}
-                                                    <div className="shrink-0 flex flex-col gap-1.5">
-                                                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Alert State History</p>
-                                                        <div className="space-y-1 overflow-y-auto max-h-20">
-                                                            {transitions.length === 0 ? (
-                                                                <p className="text-xs text-muted-foreground">No transitions recorded.</p>
-                                                            ) : [...transitions].reverse().map((entry) => (
-                                                                <div key={entry.id} className="flex items-center gap-3 text-xs">
-                                                                    <span className="text-muted-foreground w-24 shrink-0">
-                                                                        {new Date(entry.ts * 1000).toLocaleTimeString()}
-                                                                    </span>
-                                                                    <span className="font-medium" style={{ color: statusConfig[entry.state.trim().toLowerCase().replace(" ", "_") as StatusLevel]?.color ?? "#6b7280" }}>
-                                                                        {statusConfig[entry.state.trim().toLowerCase().replace(" ", "_") as StatusLevel]?.label ?? entry.state}
-                                                                    </span>
+                                                    <div className="flex items-start gap-6">
+                                                        {/* Left: status + timestamps */}
+                                                        <div className="shrink-0 flex flex-col gap-1.5">
+                                                            {[
+                                                                {
+                                                                    label: "Current Status", content: (() => {
+                                                                        const epState = activeEpisode.current_state.trim().toLowerCase().replace(" ", "_") as StatusLevel;
+                                                                        const epConfig = statusConfig[epState] ?? statusConfig.normal;
+                                                                        const shouldPulse = activeEpisode.status === "active" && (epState === "warning" || epState === "high_alert");
+                                                                        return (
+                                                                            <span className={`text-xs font-bold ${shouldPulse ? "motion-safe:animate-pulse" : ""}`} style={{ color: epConfig.color }}>
+                                                                                {epConfig.label.toUpperCase()}
+                                                                            </span>
+                                                                        );
+                                                                    })()
+                                                                },
+                                                                { label: "Triggered At", content: <span className="text-xs">{new Date(activeEpisode.started_ts * 1000).toLocaleString()}</span> },
+                                                                { label: "Last Updated", content: <span className="text-xs">{new Date(activeEpisode.last_updated_ts * 1000).toLocaleString()}</span> },
+                                                            ].map(({ label, content }) => (
+                                                                <div key={label} className="flex items-center gap-3 text-xs">
+                                                                    <span className="text-muted-foreground w-24 shrink-0">{label}</span>
+                                                                    {content}
                                                                 </div>
                                                             ))}
                                                         </div>
+
+                                                        <div className="w-px self-stretch bg-gray-200 shrink-0" />
+
+                                                        {/* Right: alert state history */}
+                                                        <div className="shrink-0 flex flex-col gap-1.5">
+                                                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Alert State History</p>
+                                                            <div className="space-y-1 overflow-y-auto max-h-20">
+                                                                {transitions.length === 0 ? (
+                                                                    <p className="text-xs text-muted-foreground">No transitions recorded.</p>
+                                                                ) : [...transitions].reverse().map((entry) => (
+                                                                    <div key={entry.id} className="flex items-center gap-3 text-xs">
+                                                                        <span className="text-muted-foreground w-24 shrink-0">
+                                                                            {new Date(entry.ts * 1000).toLocaleTimeString()}
+                                                                        </span>
+                                                                        <span className="font-medium" style={{ color: statusConfig[entry.state.trim().toLowerCase().replace(" ", "_") as StatusLevel]?.color ?? "#6b7280" }}>
+                                                                            {statusConfig[entry.state.trim().toLowerCase().replace(" ", "_") as StatusLevel]?.label ?? entry.state}
+                                                                        </span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
 
-                                            {/* ── Scrollable body: sensor graphs only ── */}
-                                            <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4">
-                                                {/* Sensor graphs section header with reload */}
-                                                <div className="flex items-center justify-between">
-                                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                                        Sensor Readings at Alert Time
-                                                    </p>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-7 gap-1.5 text-xs text-muted-foreground"
-                                                        disabled={modalLoading}
-                                                        onClick={fetchModalReadings}
-                                                    >
-                                                        <RefreshCw className={`h-3 w-3 ${modalLoading ? "animate-spin" : ""}`} />
-                                                        Reload
-                                                    </Button>
+                                                {/* ── Scrollable body: sensor graphs only ── */}
+                                                <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4">
+                                                    {/* Sensor graphs section header with reload */}
+                                                    <div className="flex items-center justify-between">
+                                                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                                            Sensor Readings at Alert Time
+                                                        </p>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 gap-1.5 text-xs text-muted-foreground"
+                                                            disabled={modalLoading}
+                                                            onClick={fetchModalReadings}
+                                                        >
+                                                            <RefreshCw className={`h-3 w-3 ${modalLoading ? "animate-spin" : ""}`} />
+                                                            Reload
+                                                        </Button>
+                                                    </div>
+
+                                                    {modalLoading ? (
+                                                        <div className="flex items-center justify-center h-32">
+                                                            <p className="text-sm text-muted-foreground">Loading sensor data…</p>
+                                                        </div>
+                                                    ) : modalReadings.length === 0 ? (
+                                                        <div className="flex items-center justify-center h-32">
+                                                            <p className="text-sm text-muted-foreground">No readings found for this episode window.</p>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                            {STATIC_SENSORS.map((sensor) => {
+                                                                const episodeState = activeEpisode.current_state.trim().toLowerCase().replace(" ", "_") as StatusLevel;
+                                                                const threshold = getSensorThreshold(sensor.name, episodeState);
+                                                                return (
+                                                                    <div key={sensor.name} className="rounded-md border border-gray-200 p-3">
+                                                                        <div className="flex items-center justify-between mb-1">
+                                                                            <p className="text-xs font-semibold text-brand-blue">
+                                                                                {sensor.name}
+                                                                                <span className="text-gray-400 font-normal ml-1">({sensor.unit})</span>
+                                                                            </p>
+                                                                            {threshold !== undefined && (
+                                                                                <p className="text-[10px] text-amber-600 font-medium">
+                                                                                    threshold: {threshold} {sensor.unit}
+                                                                                </p>
+                                                                            )}
+                                                                        </div>
+                                                                        <SensorReadingGraph
+                                                                            dataKey={sensor.dataKey}
+                                                                            color={sensor.color}
+                                                                            unit={sensor.unit}
+                                                                            minVal={sensor.minVal}
+                                                                            maxVal={sensor.maxVal}
+                                                                            height={120}
+                                                                            readings={modalReadings}
+                                                                            verticalLines={modalVerticalLines}
+                                                                            thresholdValue={threshold}
+                                                                            interactive
+                                                                            onChartCreated={handleModalChartCreated}
+                                                                            onChartRemoved={handleModalChartRemoved}
+                                                                        />
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
                                                 </div>
 
-                                                {modalLoading ? (
-                                                    <div className="flex items-center justify-center h-32">
-                                                        <p className="text-sm text-muted-foreground">Loading sensor data…</p>
-                                                    </div>
-                                                ) : modalReadings.length === 0 ? (
-                                                    <div className="flex items-center justify-center h-32">
-                                                        <p className="text-sm text-muted-foreground">No readings found for this episode window.</p>
-                                                    </div>
-                                                ) : (
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                        {STATIC_SENSORS.map((sensor) => {
-                                                            const episodeState = activeEpisode.current_state.trim().toLowerCase().replace(" ", "_") as StatusLevel;
-                                                            const threshold = getSensorThreshold(sensor.name, episodeState);
+                                                {/* ── Action footer ── */}
+                                                <div className="shrink-0 border-t border-gray-100 px-6 py-3 flex flex-col gap-2">
+                                                    {/* Error banner */}
+                                                    {errorBanner && (
+                                                        <div className="flex items-center justify-between rounded-md bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
+                                                            <div className="flex items-center gap-2">
+                                                                <XCircle className="h-3.5 w-3.5 shrink-0" />
+                                                                {errorBanner}
+                                                            </div>
+                                                            <button onClick={() => setErrorBanner(null)} className="ml-4 text-red-400 hover:text-red-600">
+                                                                <X className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Success banner */}
+                                                    {successBanner && (
+                                                        <div className="flex items-center justify-between rounded-md bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-700">
+                                                            <div className="flex items-center gap-2">
+                                                                <CheckCircle className="h-3.5 w-3.5 shrink-0" />
+                                                                {successBanner}
+                                                            </div>
+                                                            <button onClick={() => setSuccessBanner(null)} className="ml-4 text-green-500 hover:text-green-700">
+                                                                <X className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Action buttons */}
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        {/* Left: activity indicator — only for active episodes */}
+                                                        {activeEpisode.status === "active" ? (() => {
+                                                            const dotColor =
+                                                                rpiActive && detectionStatus === "high_alert" ? "#ef4444" :
+                                                                    rpiActive && detectionStatus === "warning" ? "#f97316" :
+                                                                        "#eab308";
+                                                            const label = rpiActive ? "Alert Active" : "Alert Idle";
                                                             return (
-                                                            <div key={sensor.name} className="rounded-md border border-gray-200 p-3">
-                                                                <div className="flex items-center justify-between mb-1">
-                                                                    <p className="text-xs font-semibold text-brand-blue">
-                                                                        {sensor.name}
-                                                                        <span className="text-gray-400 font-normal ml-1">({sensor.unit})</span>
-                                                                    </p>
-                                                                    {threshold !== undefined && (
-                                                                        <p className="text-[10px] text-amber-600 font-medium">
-                                                                            threshold: {threshold} {sensor.unit}
-                                                                        </p>
-                                                                    )}
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span
+                                                                        className={rpiActive ? "motion-safe:animate-pulse" : ""}
+                                                                        style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", backgroundColor: dotColor, flexShrink: 0 }}
+                                                                    />
+                                                                    <span className="text-xs font-medium" style={{ color: dotColor }}>{label}</span>
                                                                 </div>
-                                                                <SensorReadingGraph
-                                                                    dataKey={sensor.dataKey}
-                                                                    color={sensor.color}
-                                                                    unit={sensor.unit}
-                                                                    minVal={sensor.minVal}
-                                                                    maxVal={sensor.maxVal}
-                                                                    height={120}
-                                                                    readings={modalReadings}
-                                                                    verticalLines={modalVerticalLines}
-                                                                    thresholdValue={threshold}
-                                                                    interactive
-                                                                    onChartCreated={handleModalChartCreated}
-                                                                    onChartRemoved={handleModalChartRemoved}
-                                                                />
-                                                            </div>
                                                             );
-                                                        })}
-                                                    </div>
-                                                )}
-                                            </div>
+                                                        })() : <div />}
 
-                                            {/* ── Action footer ── */}
-                                            <div className="shrink-0 border-t border-gray-100 px-6 py-3 flex flex-col gap-2">
-                                                {/* Error banner */}
-                                                {errorBanner && (
-                                                    <div className="flex items-center justify-between rounded-md bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
+                                                        {/* Right: buttons */}
                                                         <div className="flex items-center gap-2">
-                                                            <XCircle className="h-3.5 w-3.5 shrink-0" />
-                                                            {errorBanner}
-                                                        </div>
-                                                        <button onClick={() => setErrorBanner(null)} className="ml-4 text-red-400 hover:text-red-600">
-                                                            <X className="h-3.5 w-3.5" />
-                                                        </button>
-                                                    </div>
-                                                )}
+                                                            {/* Mute / Unmute — warning (disabled) and high alert (active) */}
+                                                            {(isElevatedStatus || (pendingAction !== null && ["warning", "high_alert"].includes(activeEpisode.current_state.trim().toLowerCase().replace(" ", "_")))) && (() => {
+                                                                const muted = activeEpisode.buzzer_muted;
+                                                                const bStatus = activeEpisode.buzzer_status;
+                                                                const buzzerPending = (muted && bStatus === "on") || (!muted && bStatus === "muted");
+                                                                const isOn = !muted && bStatus === "on";
+                                                                const isWarningOnly = detectionStatus === "warning";
+                                                                return (
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        disabled={buzzerPending || isActing || isWarningOnly}
+                                                                        onClick={handleMuteToggle}
+                                                                        className="gap-1.5 text-xs"
+                                                                    >
+                                                                        {buzzerPending ? (
+                                                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                                        ) : isOn ? (
+                                                                            <VolumeX className="h-3.5 w-3.5" />
+                                                                        ) : (
+                                                                            <Volume2 className="h-3.5 w-3.5" />
+                                                                        )}
+                                                                        {buzzerPending ? "Pending…" : isOn ? "Mute Alarm" : "Unmute Alarm"}
+                                                                    </Button>
+                                                                );
+                                                            })()}
 
-                                                {/* Success banner */}
-                                                {successBanner && (
-                                                    <div className="flex items-center justify-between rounded-md bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-700">
-                                                        <div className="flex items-center gap-2">
-                                                            <CheckCircle className="h-3.5 w-3.5 shrink-0" />
-                                                            {successBanner}
-                                                        </div>
-                                                        <button onClick={() => setSuccessBanner(null)} className="ml-4 text-green-500 hover:text-green-700">
-                                                            <X className="h-3.5 w-3.5" />
-                                                        </button>
-                                                    </div>
-                                                )}
-
-                                                {/* Action buttons */}
-                                                <div className="flex items-center justify-between gap-2">
-                                                    {/* Left: activity indicator — only for active episodes */}
-                                                    {activeEpisode.status === "active" ? (() => {
-                                                        const dotColor =
-                                                            rpiActive && detectionStatus === "high_alert" ? "#ef4444" :
-                                                            rpiActive && detectionStatus === "warning"    ? "#f97316" :
-                                                                                                           "#eab308";
-                                                        const label = rpiActive ? "Alert Active" : "Alert Idle";
-                                                        return (
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span
-                                                                    className={rpiActive ? "motion-safe:animate-pulse" : ""}
-                                                                    style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", backgroundColor: dotColor, flexShrink: 0 }}
-                                                                />
-                                                                <span className="text-xs font-medium" style={{ color: dotColor }}>{label}</span>
-                                                            </div>
-                                                        );
-                                                    })() : <div />}
-
-                                                    {/* Right: buttons */}
-                                                    <div className="flex items-center gap-2">
-                                                        {/* Mute / Unmute — warning (disabled) and high alert (active) */}
-                                                        {(isElevatedStatus || (pendingAction !== null && ["warning", "high_alert"].includes(activeEpisode.current_state.trim().toLowerCase().replace(" ", "_")))) && (() => {
-                                                            const muted   = activeEpisode.buzzer_muted;
-                                                            const bStatus = activeEpisode.buzzer_status;
-                                                            const buzzerPending = (muted && bStatus === "on") || (!muted && bStatus === "muted");
-                                                            const isOn    = !muted && bStatus === "on";
-                                                            const isWarningOnly = detectionStatus === "warning";
-                                                            return (
+                                                            {/* Resolve */}
+                                                            {(activeEpisode.status === "active" || pendingAction !== null) && (
                                                                 <Button
                                                                     variant="outline"
                                                                     size="sm"
-                                                                    disabled={buzzerPending || isActing || isWarningOnly}
-                                                                    onClick={handleMuteToggle}
-                                                                    className="gap-1.5 text-xs"
+                                                                    disabled={isActing || rpiActive}
+                                                                    onClick={handleResolve}
+                                                                    className="gap-1.5 text-xs text-green-700 border-green-300 hover:bg-green-50"
                                                                 >
-                                                                    {buzzerPending ? (
-                                                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                                                    ) : isOn ? (
-                                                                        <VolumeX className="h-3.5 w-3.5" />
-                                                                    ) : (
-                                                                        <Volume2 className="h-3.5 w-3.5" />
-                                                                    )}
-                                                                    {buzzerPending ? "Pending…" : isOn ? "Mute Alarm" : "Unmute Alarm"}
+                                                                    {isActing && pendingAction === "resolved"
+                                                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                                        : <CheckCircle className="h-3.5 w-3.5" />
+                                                                    }
+                                                                    Mark as Resolved
                                                                 </Button>
-                                                            );
-                                                        })()}
+                                                            )}
 
-                                                        {/* Resolve */}
-                                                        {(activeEpisode.status === "active" || pendingAction !== null) && (
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                disabled={isActing || rpiActive}
-                                                                onClick={handleResolve}
-                                                                className="gap-1.5 text-xs text-green-700 border-green-300 hover:bg-green-50"
-                                                            >
-                                                                {isActing && pendingAction === "resolved"
-                                                                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                                                    : <CheckCircle className="h-3.5 w-3.5" />
-                                                                }
-                                                                Mark as Resolved
-                                                            </Button>
-                                                        )}
+                                                            {/* False Alarm */}
+                                                            {(activeEpisode.status === "active" || pendingAction !== null) && (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    disabled={isActing || rpiActive}
+                                                                    onClick={handleFalseAlarm}
+                                                                    className="gap-1.5 text-xs text-muted-foreground"
+                                                                >
+                                                                    {isActing && pendingAction === "false_alarm"
+                                                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                                        : <XCircle className="h-3.5 w-3.5" />
+                                                                    }
+                                                                    Mark as False Alarm
+                                                                </Button>
+                                                            )}
 
-                                                        {/* False Alarm */}
-                                                        {(activeEpisode.status === "active" || pendingAction !== null) && (
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                disabled={isActing || rpiActive}
-                                                                onClick={handleFalseAlarm}
-                                                                className="gap-1.5 text-xs text-muted-foreground"
-                                                            >
-                                                                {isActing && pendingAction === "false_alarm"
-                                                                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                                                    : <XCircle className="h-3.5 w-3.5" />
-                                                                }
-                                                                Mark as False Alarm
-                                                            </Button>
-                                                        )}
-
-                                                        {/* Dismiss — only for resolved / false_alarm */}
-                                                        {(activeEpisode.status === "resolved" || activeEpisode.status === "false_alarm") && !pendingAction && (
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                disabled={isDismissing}
-                                                                onClick={handleDismiss}
-                                                                className="gap-1.5 text-xs text-muted-foreground"
-                                                            >
-                                                                {isDismissing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
-                                                                Dismiss
-                                                            </Button>
-                                                        )}
+                                                            {/* Dismiss — only for resolved / false_alarm */}
+                                                            {(activeEpisode.status === "resolved" || activeEpisode.status === "false_alarm") && !pendingAction && (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    disabled={isDismissing}
+                                                                    onClick={handleDismiss}
+                                                                    className="gap-1.5 text-xs text-muted-foreground"
+                                                                >
+                                                                    {isDismissing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
+                                                                    Dismiss
+                                                                </Button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </DialogContent>
-                                    </Dialog>
+                                            </DialogContent>
+                                        </Dialog>
                                     </div>
                                 </CardContent>
                             )}
@@ -1094,7 +1158,23 @@ export default function MonitoringDashboard() {
                         {/* Camera Snapshots */}
                         <Card className={activeEpisode ? "flex-1 flex flex-col" : ""}>
                             <CardHeader className="pb-1 pt-3 px-4">
-                                <CardTitle className="text-sm font-bold text-brand-blue">Camera Snapshots</CardTitle>
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-sm font-bold text-brand-blue">Camera Snapshots</CardTitle>
+                                    {activeEpisode && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-7 gap-1.5 text-xs"
+                                            disabled={requesting || activeEpisode?.status !== "active"}
+                                            onClick={requestCapture}
+                                        >
+                                            {requesting
+                                                ? <><Loader2 className="h-3 w-3 animate-spin" /> Capturing…</>
+                                                : <><Camera className="h-3 w-3" /> Request Capture</>
+                                            }
+                                        </Button>
+                                    )}
+                                </div>
                             </CardHeader>
                             {!activeEpisode ? (
                                 <CardContent className="px-4 pb-3">
@@ -1104,65 +1184,129 @@ export default function MonitoringDashboard() {
                                 <CardContent className="px-4 pb-3 flex flex-col gap-3 flex-1">
                                     {/* Headcount row */}
                                     <div className="flex items-center justify-between">
-                                        <p className="text-sm text-muted-foreground">Headcount</p>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xl font-bold text-brand-blue">18</span>
-                                            <TrendBadge value={2} />
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Headcount</p>
+                                            {(() => {
+                                                const lastDetected = cardLogs.find((l) => l.total_count > 0);
+                                                return (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {lastDetected
+                                                            ? `Person detected at ${new Date(lastDetected.ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`
+                                                            : "No person detected yet"
+                                                        }
+                                                    </p>
+                                                );
+                                            })()}
                                         </div>
+                                        <span className={`text-xl font-bold ${cardLogs.length === 0 ? "text-muted-foreground" : "text-brand-blue"}`}>
+                                            {cardLogs.length === 0 ? "—" : cardLogs[0].total_count}
+                                        </span>
                                     </div>
 
                                     {/* Snapshot carousel */}
-                                    <div
-                                        className="relative cursor-pointer"
-                                        onClick={openFullscreen}
-                                        onTouchStart={handleTouchStart}
-                                        onTouchMove={handleTouchMove}
-                                        onTouchEnd={handleTouchEnd}
-                                    >
-                                        <div className="relative aspect-video bg-muted rounded-lg flex items-center justify-center hover:bg-muted/80 transition-colors overflow-hidden">
-                                            <p className="text-xs text-muted-foreground text-center px-1">
-                                                {STATIC_CAMERA_SNAPSHOTS[currentImageIndex].label}
-                                            </p>
-                                            <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-2 py-1 rounded-b-lg">
-                                                <p className="text-xs text-white/90">
-                                                    {STATIC_CAMERA_SNAPSHOTS[currentImageIndex].label}
+                                    {cardLogs.length === 0 ? (
+                                        <div className="aspect-video bg-muted rounded-lg flex flex-col items-center justify-center gap-2">
+                                            {requesting ? (
+                                                <>
+                                                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                                    <p className="text-xs text-muted-foreground">Capturing…</p>
+                                                </>
+                                            ) : (
+                                                <p className="text-xs text-muted-foreground text-center px-4">
+                                                    Waiting for first capture…
+                                                </p>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div
+                                                className="relative cursor-pointer"
+                                                onClick={openFullscreen}
+                                                onTouchStart={handleTouchStart}
+                                                onTouchMove={handleTouchMove}
+                                                onTouchEnd={handleTouchEnd}
+                                            >
+                                                <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
+                                                    {cardLogs[currentImageIndex]?.image_url ? (
+                                                        <>
+                                                            <img
+                                                                key={cardLogs[currentImageIndex].id}
+                                                                src={cardLogs[currentImageIndex].image_url!}
+                                                                alt="Headcount capture"
+                                                                className="w-full h-full object-cover"
+                                                                onLoad={() => setCardImageLoading(false)}
+                                                            />
+                                                            {cardImageLoading && (
+                                                                <div className="absolute inset-0 flex items-center justify-center bg-muted">
+                                                                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center">
+                                                            <p className="text-xs text-muted-foreground">Upload pending…</p>
+                                                        </div>
+                                                    )}
+                                                    {cardLogs[currentImageIndex] && (
+                                                    <div className="absolute bottom-0 left-0 right-0 bg-black/55 px-2 py-1 rounded-b-lg flex items-center justify-between">
+                                                        <p className="text-xs text-white/90">
+                                                            {new Date(cardLogs[currentImageIndex].ts * 1000).toLocaleTimeString()}
+                                                        </p>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-xs text-white/90 font-semibold">
+                                                                {cardLogs[currentImageIndex].total_count} person{cardLogs[currentImageIndex].total_count !== 1 ? "s" : ""}
+                                                            </span>
+                                                            <span className="text-xs text-white/60">
+                                                                {cardLogs[currentImageIndex].trigger_source === "manual" ? "· Manual" : "· Auto"}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    )}
+                                                </div>
+                                                {cardLogs.length > 1 && (
+                                                    <>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="icon"
+                                                            onClick={(e) => { e.stopPropagation(); handlePrevImage(cardLogs.length); }}
+                                                            className="absolute left-1 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white h-7 w-7"
+                                                        >
+                                                            <ChevronLeft className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="icon"
+                                                            onClick={(e) => { e.stopPropagation(); handleNextImage(cardLogs.length); }}
+                                                            className="absolute right-1 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white h-7 w-7"
+                                                        >
+                                                            <ChevronRight className="h-4 w-4" />
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </div>
+                                            {/* Dot indicators + caption */}
+                                            <div className="flex flex-col items-center gap-1">
+                                                <div className="flex justify-center gap-1.5">
+                                                    {cardLogs.map((_, index) => (
+                                                        <button
+                                                            key={index}
+                                                            onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(index); }}
+                                                            className="w-1.5 h-1.5 rounded-full transition-all"
+                                                            style={{ backgroundColor: index === currentImageIndex ? "hsl(var(--brand-blue))" : "#CBD5E1" }}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {totalCaptured > 5
+                                                        ? `Showing last 5 of ${totalCaptured} captures`
+                                                        : `${totalCaptured} capture${totalCaptured !== 1 ? "s" : ""} this episode`
+                                                    }
                                                 </p>
                                             </div>
-                                        </div>
-                                        {STATIC_CAMERA_SNAPSHOTS.length > 1 && (
-                                            <>
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    onClick={(e) => { e.stopPropagation(); handlePrevImage(); }}
-                                                    className="absolute left-1 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white h-7 w-7"
-                                                >
-                                                    <ChevronLeft className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    onClick={(e) => { e.stopPropagation(); handleNextImage(); }}
-                                                    className="absolute right-1 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white h-7 w-7"
-                                                >
-                                                    <ChevronRight className="h-4 w-4" />
-                                                </Button>
-                                            </>
-                                        )}
-                                        <div className="flex justify-center gap-1.5 mt-2">
-                                            {STATIC_CAMERA_SNAPSHOTS.map((snapshot, index) => (
-                                                <button
-                                                    key={snapshot.id}
-                                                    onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(index); }}
-                                                    className="w-1.5 h-1.5 rounded-full transition-all"
-                                                    style={{ backgroundColor: index === currentImageIndex ? "hsl(var(--brand-blue))" : "#CBD5E1" }}
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
+                                        </>
+                                    )}
                                 </CardContent>
                             )}
-
                         </Card>
                     </div>
 
@@ -1214,66 +1358,245 @@ export default function MonitoringDashboard() {
 
 
             {/* ── Fullscreen Camera Overlay ─────────────────────────────────────── */}
-            {isFullscreen && (
-                <div
-                    className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center"
-                    style={{ touchAction: "none", WebkitOverflowScrolling: "touch", overscrollBehavior: "none" }}
-                    onClick={closeFullscreen}
-                >
+            {isFullscreen && allLogs.length > 0 && (() => {
+                const fsLog = allLogs[fsImageIndex] as HeadcountLog | undefined;
+                return (
                     <div
-                        className="relative w-full h-full flex items-center justify-center p-4"
-                        data-swipeable="true"
-                        style={{ touchAction: "pan-x", overscrollBehavior: "none" }}
-                        onClick={(e) => e.stopPropagation()}
-                        onTouchStart={(e) => { e.stopPropagation(); handleTouchStart(e); }}
-                        onTouchMove={(e)  => { e.stopPropagation(); handleTouchMove(e);  }}
-                        onTouchEnd={(e)   => { e.stopPropagation(); handleTouchEnd();    }}
+                        className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4"
+                        style={{ touchAction: "none", WebkitOverflowScrolling: "touch", overscrollBehavior: "none" }}
+                        onClick={closeFullscreen}
+                    >
+                        {/* ── Unified modal card ── */}
+                        <div
+                            className="w-full max-w-5xl bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+                            style={{ height: "calc(100vh - 2rem)", maxHeight: "calc(100vh - 2rem)", touchAction: "pan-x", overscrollBehavior: "none" }}
+                            data-swipeable="true"
+                            onClick={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => { e.stopPropagation(); handleTouchStart(e); }}
+                            onTouchMove={(e) => { e.stopPropagation(); handleTouchMove(e); }}
+                            onTouchEnd={(e) => { e.stopPropagation(); handleTouchEnd(); }}
+                        >
+                            {/* Modal header */}
+                            <div className="px-6 py-4 border-b flex items-center justify-between shrink-0">
+                                <h2 className="text-base font-semibold text-gray-900">Headcount Captures</h2>
+                                <Button variant="ghost" size="icon" onClick={closeFullscreen}>
+                                    <X className="h-5 w-5" />
+                                </Button>
+                            </div>
+
+                            {/* Modal body */}
+                            <div className="flex-1 overflow-hidden flex flex-col sm:flex-row min-h-0">
+
+                                {/* ── Image section ── */}
+                                <div
+                                    className="flex-1 min-w-0 bg-gray-100 flex items-center justify-center p-4"
+                                    data-swipeable="true"
+                                >
+                                    <div className="relative w-full">
+                                        <div className="w-full aspect-video bg-gray-800 rounded-xl overflow-hidden relative">
+                                            {fsLog?.status === "timeout" ? (
+                                                <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+                                                    <div className="flex items-center gap-2 bg-orange-500/20 border border-orange-500/40 px-4 py-2 rounded-lg">
+                                                        <span className="w-2 h-2 rounded-full bg-orange-400 inline-block shrink-0" />
+                                                        <p className="text-orange-300 text-sm font-medium">Capture timed out</p>
+                                                    </div>
+                                                    <p className="text-white/40 text-xs">Camera did not respond in time</p>
+                                                </div>
+                                            ) : fsLog?.image_url ? (
+                                                <>
+                                                    <img
+                                                        key={fsLog.id}
+                                                        src={fsLog.image_url}
+                                                        alt="Headcount capture"
+                                                        className="w-full h-full object-contain cursor-pointer"
+                                                        onLoad={() => setFsImageLoading(false)}
+                                                        onClick={(e) => { e.stopPropagation(); setImageLightbox(true); }}
+                                                    />
+                                                    {fsImageLoading && (
+                                                        <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
+                                                            <Loader2 className="h-8 w-8 text-white/60 animate-spin" />
+                                                        </div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                    <p className="text-white/50 text-sm">Upload pending…</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <Button
+                                            size="icon"
+                                            onClick={handleFsPrevImage}
+                                            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/70 text-white border-0 w-10 h-10"
+                                        >
+                                            <ChevronLeft className="h-5 w-5" />
+                                        </Button>
+                                        <Button
+                                            size="icon"
+                                            onClick={handleFsNextImage}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/70 text-white border-0 w-10 h-10"
+                                        >
+                                            <ChevronRight className="h-5 w-5" />
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {/* ── Right panel ── */}
+                                <div className="w-full sm:w-80 border-t sm:border-t-0 sm:border-l flex flex-col overflow-hidden shrink-0">
+
+                                    {/* Counter + nav */}
+                                    {(() => {
+                                        const detectionCount = allLogs.filter(l => l.total_count > 0).length;
+                                        const currentHasDetection = (allLogs[fsImageIndex]?.total_count ?? 0) > 0;
+                                        const detectedNavDisabled = detectionCount === 0 || (currentHasDetection && detectionCount === 1);
+                                        return (
+                                        <div className="px-4 py-3 border-b flex items-center justify-between shrink-0">
+                                            <span className="text-sm font-semibold text-gray-700">
+                                                {fsImageIndex + 1} / {allLogs.length}
+                                            </span>
+                                            <div className="flex items-center gap-0.5">
+                                                <Button
+                                                    size="icon" variant="outline"
+                                                    className="h-7 w-7 border-blue-300 text-blue-600 hover:bg-blue-50 disabled:opacity-30"
+                                                    title="Previous capture with person detected"
+                                                    onClick={handlePrevDetected}
+                                                    disabled={detectedNavDisabled}
+                                                >
+                                                    <ChevronsLeft className="h-4 w-4" />
+                                                </Button>
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleFsPrevImage}>
+                                                    <ChevronLeft className="h-4 w-4" />
+                                                </Button>
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleFsNextImage}>
+                                                    <ChevronRight className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    size="icon" variant="outline"
+                                                    className="h-7 w-7 border-blue-300 text-blue-600 hover:bg-blue-50 disabled:opacity-30"
+                                                    title="Next capture with person detected"
+                                                    onClick={handleNextDetected}
+                                                    disabled={detectedNavDisabled}
+                                                >
+                                                    <ChevronsRight className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                        );
+                                    })()}
+
+                                    {/* Capture details */}
+                                    {fsLog && (
+                                        <div className="px-5 py-4 border-b space-y-3 shrink-0">
+                                            {/* Large count emphasis */}
+                                            <div className="flex items-baseline gap-2">
+                                                <span className="text-5xl font-bold text-gray-900">{fsLog.total_count}</span>
+                                                <span className="text-lg text-gray-500">{fsLog.total_count === 1 ? "person" : "persons"} detected</span>
+                                            </div>
+                                            {/* Confidence breakdown */}
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-sm text-green-600 flex items-center gap-1.5">
+                                                    <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block shrink-0" />
+                                                    High: <strong>{fsLog.high_count}</strong>
+                                                </span>
+                                                <span className="text-sm text-yellow-600 flex items-center gap-1.5">
+                                                    <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 inline-block shrink-0" />
+                                                    Mid: <strong>{fsLog.mid_count}</strong>
+                                                </span>
+                                                <span className="text-sm text-red-500 flex items-center gap-1.5">
+                                                    <span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block shrink-0" />
+                                                    Low: <strong>{fsLog.low_count}</strong>
+                                                </span>
+                                            </div>
+                                            {/* Metadata row */}
+                                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                                                <span>{new Date(fsLog.ts * 1000).toLocaleTimeString()}</span>
+                                                <span className="text-gray-300">·</span>
+                                                <span className="bg-gray-100 px-2 py-0.5 rounded-full text-xs">
+                                                    {fsLog.trigger_source === "manual" ? "Manual" : "Auto"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Request capture */}
+                                    <div className="px-4 py-3 border-b shrink-0">
+                                        <Button
+                                            className="w-full gap-1.5"
+                                            disabled={requesting || activeEpisode?.status !== "active"}
+                                            onClick={requestCapture}
+                                        >
+                                            {requesting
+                                                ? <><Loader2 className="h-4 w-4 animate-spin" /> Requesting…</>
+                                                : <><Camera className="h-4 w-4" /> Request Capture</>
+                                            }
+                                        </Button>
+                                    </div>
+
+                                    {/* Captures list */}
+                                    <div ref={captureListRef} className="flex-1 overflow-y-auto min-h-0 pb-3 pr-1">
+                                        {allLogs.map((log, index) => (
+                                            <button
+                                                key={log.id}
+                                                data-active={index === fsImageIndex ? "true" : undefined}
+                                                onClick={() => setFsImageIndex(index)}
+                                                className={`w-full px-4 py-2.5 flex items-center justify-between text-left transition-colors border-l-2 ${
+                                                    index === fsImageIndex
+                                                        ? "bg-blue-50 border-blue-500"
+                                                        : "hover:bg-gray-50 border-transparent"
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs text-gray-400 w-5 text-right shrink-0">{index + 1}</span>
+                                                    <span className="text-xs text-gray-600">
+                                                        {new Date(log.ts * 1000).toLocaleTimeString()}
+                                                    </span>
+                                                </div>
+                                                {log.status === "timeout" ? (
+                                                    <span className="text-xs font-medium text-orange-500 flex items-center gap-1">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block shrink-0" />
+                                                        Timeout
+                                                    </span>
+                                                ) : (
+                                                    <span className={`text-xs font-semibold ${log.total_count > 0 ? "text-gray-900" : "text-gray-400"}`}>
+                                                        {log.total_count} {log.total_count === 1 ? "person" : "persons"}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* ── Image lightbox ─────────────────────────────────────────────────── */}
+            {imageLightbox && (() => {
+                const fsLog = allLogs[fsImageIndex] as HeadcountLog | undefined;
+                if (!fsLog?.image_url) return null;
+                return (
+                    <div
+                        className="fixed inset-0 z-[200] bg-black flex items-center justify-center"
+                        onClick={() => setImageLightbox(false)}
                     >
                         <Button
-                            variant="outline"
+                            variant="ghost"
                             size="icon"
-                            onClick={closeFullscreen}
-                            className="absolute top-4 right-4 z-10 bg-white/90 hover:bg-white"
+                            className="absolute top-4 right-4 text-white bg-white/20 hover:bg-white/35"
+                            onClick={() => setImageLightbox(false)}
                         >
                             <X className="h-6 w-6" />
                         </Button>
-
-                        <div className="w-full max-w-6xl aspect-video bg-muted rounded-lg flex items-center justify-center">
-                            <p className="text-2xl text-muted-foreground">
-                                {STATIC_CAMERA_SNAPSHOTS[currentImageIndex].label}
-                            </p>
-                        </div>
-
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={handlePrevImage}
-                            className="hidden sm:flex absolute left-8 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white w-12 h-12"
-                        >
-                            <ChevronLeft className="h-8 w-8" />
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={handleNextImage}
-                            className="hidden sm:flex absolute right-8 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white w-12 h-12"
-                        >
-                            <ChevronRight className="h-8 w-8" />
-                        </Button>
-
-                        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex justify-center gap-3">
-                            {STATIC_CAMERA_SNAPSHOTS.map((snapshot, index) => (
-                                <button
-                                    key={snapshot.id}
-                                    onClick={() => setCurrentImageIndex(index)}
-                                    className="w-3 h-3 rounded-full transition-all"
-                                    style={{ backgroundColor: index === currentImageIndex ? "#FFFFFF" : "#6B7280" }}
-                                />
-                            ))}
-                        </div>
+                        <img
+                            src={fsLog.image_url}
+                            alt="Headcount capture"
+                            className="max-w-full max-h-full object-contain"
+                            onClick={(e) => e.stopPropagation()}
+                        />
                     </div>
-                </div>
-            )}
+                );
+            })()}
         </PageLayout>
     );
 }

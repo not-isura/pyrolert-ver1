@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      headcount_logs: {
+        Row: {
+          id: number
+          episode_id: number
+          ts: number
+          high_count: number
+          mid_count: number
+          low_count: number
+          total_count: number
+          trigger_source: string
+          image_url: string | null
+          status: string
+        }
+        Insert: {
+          id?: number
+          episode_id: number
+          ts: number
+          high_count?: number
+          mid_count?: number
+          low_count?: number
+          total_count?: number
+          trigger_source?: string
+          image_url?: string | null
+          status?: string
+        }
+        Update: {
+          id?: number
+          episode_id?: number
+          ts?: number
+          high_count?: number
+          mid_count?: number
+          low_count?: number
+          total_count?: number
+          trigger_source?: string
+          image_url?: string | null
+          status?: string
+        }
+      }
       alert_episodes: {
         Row: {
           id: number
@@ -26,6 +64,7 @@ export type Database = {
           buzzer_status: string
           rpi_acknowledged_at: string | null
           dismissed_at: string | null
+          headcount_requested: boolean
         }
         Insert: {
           id?: number
@@ -38,6 +77,7 @@ export type Database = {
           buzzer_status?: string
           rpi_acknowledged_at?: string | null
           dismissed_at?: string | null
+          headcount_requested?: boolean
         }
         Update: {
           id?: number
@@ -50,6 +90,7 @@ export type Database = {
           buzzer_status?: string
           rpi_acknowledged_at?: string | null
           dismissed_at?: string | null
+          headcount_requested?: boolean
         }
       }
       alert_transitions: {
