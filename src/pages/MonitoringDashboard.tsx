@@ -11,7 +11,7 @@ import TrendBadge from "@/components/TrendBadge";
 import { useAlertEpisode } from "@/hooks/useAlertEpisode";
 import { useAlertSound } from "@/hooks/useAlertSound";
 import { useHeadcount } from "@/hooks/useHeadcount";
-import type { HeadcountLog } from "@/hooks/useHeadcount";
+import HeadcountCarousel from "@/components/HeadcountCarousel";
 import { useDeviceConnection } from "@/hooks/useDeviceConnection";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,8 +30,6 @@ import {
     CheckCircle,
     ChevronLeft,
     ChevronRight,
-    ChevronsLeft,
-    ChevronsRight,
     HelpCircle,
     Loader2,
     RefreshCw,
@@ -130,21 +128,17 @@ export default function MonitoringDashboard() {
     const { cardLogs, allLogs, totalCaptured, requesting, requestCapture } = useHeadcount(activeEpisode?.id ?? null);
     const { isDeviceConnected } = useDeviceConnection(readings);
 
-    // Reset both carousels to index 0 when a new capture arrives
+    // Reset card carousel to index 0 when a new capture arrives
     useEffect(() => {
         setCurrentImageIndex(0);
-        setFsImageIndex(0);
     }, [allLogs.length]);
 
     const displayReadings = isDeviceConnected ? readings : [];
     const latestReading = isDeviceConnected && readings.length > 0 ? readings[readings.length - 1] : null;
 
-    const [currentImageIndex, setCurrentImageIndex] = useState(0); // card carousel
-    const [fsImageIndex, setFsImageIndex] = useState(0);           // fullscreen modal
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const [fsImageLoading, setFsImageLoading] = useState(false);
     const [cardImageLoading, setCardImageLoading] = useState(false);
-    const [imageLightbox, setImageLightbox] = useState(false);
     const [isReportOpen, setIsReportOpen] = useState(false);
     const [modalReadings, setModalReadings] = useState<SensorReading[]>([]);
     const [modalLoading, setModalLoading] = useState(false);
@@ -464,20 +458,6 @@ export default function MonitoringDashboard() {
         };
     }, [isFullscreen]);
 
-    const captureListRef = useRef<HTMLDivElement>(null);
-
-    // Scroll active capture into view when fullscreen index changes
-    useEffect(() => {
-        if (!captureListRef.current) return;
-        const activeEl = captureListRef.current.querySelector('[data-active="true"]');
-        activeEl?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    }, [fsImageIndex]);
-
-    // Show spinner when navigating in fullscreen
-    useEffect(() => {
-        if (isFullscreen) setFsImageLoading(true);
-    }, [fsImageIndex, isFullscreen]);
-
     // Show spinner when navigating in card
     useEffect(() => {
         if (cardLogs[currentImageIndex]?.image_url) setCardImageLoading(true);
@@ -490,44 +470,15 @@ export default function MonitoringDashboard() {
     const handleNextImage = (len: number) =>
         setCurrentImageIndex((prev) => prev === len - 1 ? 0 : prev + 1);
 
-    // Fullscreen modal handlers
-    const handleFsPrevImage = () =>
-        setFsImageIndex((prev) => prev === 0 ? allLogs.length - 1 : prev - 1);
-
-    const handleFsNextImage = () =>
-        setFsImageIndex((prev) => prev === allLogs.length - 1 ? 0 : prev + 1);
-
-    const handlePrevDetected = () => {
-        const len = allLogs.length;
-        for (let i = 1; i <= len; i++) {
-            const idx = (fsImageIndex - i + len) % len;
-            if (allLogs[idx].total_count > 0) { setFsImageIndex(idx); return; }
-        }
-    };
-
-    const handleNextDetected = () => {
-        const len = allLogs.length;
-        for (let i = 1; i <= len; i++) {
-            const idx = (fsImageIndex + i) % len;
-            if (allLogs[idx].total_count > 0) { setFsImageIndex(idx); return; }
-        }
-    };
-
     const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX; };
     const handleTouchMove = (e: React.TouchEvent) => { touchEndX.current = e.touches[0].clientX; };
     const handleTouchEnd = () => {
-        if (isFullscreen) {
-            if (touchStartX.current - touchEndX.current > 50) handleFsNextImage();
-            if (touchStartX.current - touchEndX.current < -50) handleFsPrevImage();
-        } else {
-            const len = cardLogs.length;
-            if (touchStartX.current - touchEndX.current > 50) handleNextImage(len);
-            if (touchStartX.current - touchEndX.current < -50) handlePrevImage(len);
-        }
+        const len = cardLogs.length;
+        if (touchStartX.current - touchEndX.current > 50) handleNextImage(len);
+        if (touchStartX.current - touchEndX.current < -50) handlePrevImage(len);
     };
 
     const openFullscreen = () => {
-        setFsImageIndex(currentImageIndex);
         setIsFullscreen(true);
         const scrollY = window.scrollY;
         document.documentElement.style.overflow = "hidden";
@@ -545,7 +496,6 @@ export default function MonitoringDashboard() {
 
     const closeFullscreen = () => {
         setIsFullscreen(false);
-        setFsImageIndex(0);
         const scrollY = document.body.style.top;
         document.documentElement.style.overflow = "";
         document.documentElement.style.position = "";
@@ -1077,12 +1027,11 @@ export default function MonitoringDashboard() {
                                                                 const bStatus = activeEpisode.buzzer_status;
                                                                 const buzzerPending = (muted && bStatus === "on") || (!muted && bStatus === "muted");
                                                                 const isOn = !muted && bStatus === "on";
-                                                                const isWarningOnly = detectionStatus === "warning";
                                                                 return (
                                                                     <Button
                                                                         variant="outline"
                                                                         size="sm"
-                                                                        disabled={buzzerPending || isActing || isWarningOnly}
+                                                                        disabled={buzzerPending || isActing}
                                                                         onClick={handleMuteToggle}
                                                                         className="gap-1.5 text-xs"
                                                                     >
@@ -1358,245 +1307,39 @@ export default function MonitoringDashboard() {
 
 
             {/* ── Fullscreen Camera Overlay ─────────────────────────────────────── */}
-            {isFullscreen && allLogs.length > 0 && (() => {
-                const fsLog = allLogs[fsImageIndex] as HeadcountLog | undefined;
-                return (
+            {isFullscreen && allLogs.length > 0 && (
+                <div
+                    className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4"
+                    style={{ touchAction: "none", WebkitOverflowScrolling: "touch", overscrollBehavior: "none" }}
+                    onClick={closeFullscreen}
+                >
                     <div
-                        className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4"
-                        style={{ touchAction: "none", WebkitOverflowScrolling: "touch", overscrollBehavior: "none" }}
-                        onClick={closeFullscreen}
+                        className="w-full max-w-5xl bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+                        style={{ height: "calc(100vh - 2rem)", maxHeight: "calc(100vh - 2rem)" }}
+                        onClick={(e) => e.stopPropagation()}
                     >
-                        {/* ── Unified modal card ── */}
-                        <div
-                            className="w-full max-w-5xl bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-                            style={{ height: "calc(100vh - 2rem)", maxHeight: "calc(100vh - 2rem)", touchAction: "pan-x", overscrollBehavior: "none" }}
-                            data-swipeable="true"
-                            onClick={(e) => e.stopPropagation()}
-                            onTouchStart={(e) => { e.stopPropagation(); handleTouchStart(e); }}
-                            onTouchMove={(e) => { e.stopPropagation(); handleTouchMove(e); }}
-                            onTouchEnd={(e) => { e.stopPropagation(); handleTouchEnd(); }}
-                        >
-                            {/* Modal header */}
-                            <div className="px-6 py-4 border-b flex items-center justify-between shrink-0">
-                                <h2 className="text-base font-semibold text-gray-900">Headcount Captures</h2>
-                                <Button variant="ghost" size="icon" onClick={closeFullscreen}>
-                                    <X className="h-5 w-5" />
-                                </Button>
-                            </div>
+                        {/* Modal header */}
+                        <div className="px-6 py-4 border-b flex items-center justify-between shrink-0">
+                            <h2 className="text-base font-semibold text-gray-900">Headcount Captures</h2>
+                            <Button variant="ghost" size="icon" onClick={closeFullscreen}>
+                                <X className="h-5 w-5" />
+                            </Button>
+                        </div>
 
-                            {/* Modal body */}
-                            <div className="flex-1 overflow-hidden flex flex-col sm:flex-row min-h-0">
-
-                                {/* ── Image section ── */}
-                                <div
-                                    className="flex-1 min-w-0 bg-gray-100 flex items-center justify-center p-4"
-                                    data-swipeable="true"
-                                >
-                                    <div className="relative w-full">
-                                        <div className="w-full aspect-video bg-gray-800 rounded-xl overflow-hidden relative">
-                                            {fsLog?.status === "timeout" ? (
-                                                <div className="w-full h-full flex flex-col items-center justify-center gap-2">
-                                                    <div className="flex items-center gap-2 bg-orange-500/20 border border-orange-500/40 px-4 py-2 rounded-lg">
-                                                        <span className="w-2 h-2 rounded-full bg-orange-400 inline-block shrink-0" />
-                                                        <p className="text-orange-300 text-sm font-medium">Capture timed out</p>
-                                                    </div>
-                                                    <p className="text-white/40 text-xs">Camera did not respond in time</p>
-                                                </div>
-                                            ) : fsLog?.image_url ? (
-                                                <>
-                                                    <img
-                                                        key={fsLog.id}
-                                                        src={fsLog.image_url}
-                                                        alt="Headcount capture"
-                                                        className="w-full h-full object-contain cursor-pointer"
-                                                        onLoad={() => setFsImageLoading(false)}
-                                                        onClick={(e) => { e.stopPropagation(); setImageLightbox(true); }}
-                                                    />
-                                                    {fsImageLoading && (
-                                                        <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
-                                                            <Loader2 className="h-8 w-8 text-white/60 animate-spin" />
-                                                        </div>
-                                                    )}
-                                                </>
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center">
-                                                    <p className="text-white/50 text-sm">Upload pending…</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                        <Button
-                                            size="icon"
-                                            onClick={handleFsPrevImage}
-                                            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/70 text-white border-0 w-10 h-10"
-                                        >
-                                            <ChevronLeft className="h-5 w-5" />
-                                        </Button>
-                                        <Button
-                                            size="icon"
-                                            onClick={handleFsNextImage}
-                                            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/70 text-white border-0 w-10 h-10"
-                                        >
-                                            <ChevronRight className="h-5 w-5" />
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                {/* ── Right panel ── */}
-                                <div className="w-full sm:w-80 border-t sm:border-t-0 sm:border-l flex flex-col overflow-hidden shrink-0">
-
-                                    {/* Counter + nav */}
-                                    {(() => {
-                                        const detectionCount = allLogs.filter(l => l.total_count > 0).length;
-                                        const currentHasDetection = (allLogs[fsImageIndex]?.total_count ?? 0) > 0;
-                                        const detectedNavDisabled = detectionCount === 0 || (currentHasDetection && detectionCount === 1);
-                                        return (
-                                        <div className="px-4 py-3 border-b flex items-center justify-between shrink-0">
-                                            <span className="text-sm font-semibold text-gray-700">
-                                                {fsImageIndex + 1} / {allLogs.length}
-                                            </span>
-                                            <div className="flex items-center gap-0.5">
-                                                <Button
-                                                    size="icon" variant="outline"
-                                                    className="h-7 w-7 border-blue-300 text-blue-600 hover:bg-blue-50 disabled:opacity-30"
-                                                    title="Previous capture with person detected"
-                                                    onClick={handlePrevDetected}
-                                                    disabled={detectedNavDisabled}
-                                                >
-                                                    <ChevronsLeft className="h-4 w-4" />
-                                                </Button>
-                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleFsPrevImage}>
-                                                    <ChevronLeft className="h-4 w-4" />
-                                                </Button>
-                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleFsNextImage}>
-                                                    <ChevronRight className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    size="icon" variant="outline"
-                                                    className="h-7 w-7 border-blue-300 text-blue-600 hover:bg-blue-50 disabled:opacity-30"
-                                                    title="Next capture with person detected"
-                                                    onClick={handleNextDetected}
-                                                    disabled={detectedNavDisabled}
-                                                >
-                                                    <ChevronsRight className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                        );
-                                    })()}
-
-                                    {/* Capture details */}
-                                    {fsLog && (
-                                        <div className="px-5 py-4 border-b space-y-3 shrink-0">
-                                            {/* Large count emphasis */}
-                                            <div className="flex items-baseline gap-2">
-                                                <span className="text-5xl font-bold text-gray-900">{fsLog.total_count}</span>
-                                                <span className="text-lg text-gray-500">{fsLog.total_count === 1 ? "person" : "persons"} detected</span>
-                                            </div>
-                                            {/* Confidence breakdown */}
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-sm text-green-600 flex items-center gap-1.5">
-                                                    <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block shrink-0" />
-                                                    High: <strong>{fsLog.high_count}</strong>
-                                                </span>
-                                                <span className="text-sm text-yellow-600 flex items-center gap-1.5">
-                                                    <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 inline-block shrink-0" />
-                                                    Mid: <strong>{fsLog.mid_count}</strong>
-                                                </span>
-                                                <span className="text-sm text-red-500 flex items-center gap-1.5">
-                                                    <span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block shrink-0" />
-                                                    Low: <strong>{fsLog.low_count}</strong>
-                                                </span>
-                                            </div>
-                                            {/* Metadata row */}
-                                            <div className="flex items-center gap-2 text-sm text-gray-500">
-                                                <span>{new Date(fsLog.ts * 1000).toLocaleTimeString()}</span>
-                                                <span className="text-gray-300">·</span>
-                                                <span className="bg-gray-100 px-2 py-0.5 rounded-full text-xs">
-                                                    {fsLog.trigger_source === "manual" ? "Manual" : "Auto"}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Request capture */}
-                                    <div className="px-4 py-3 border-b shrink-0">
-                                        <Button
-                                            className="w-full gap-1.5"
-                                            disabled={requesting || activeEpisode?.status !== "active"}
-                                            onClick={requestCapture}
-                                        >
-                                            {requesting
-                                                ? <><Loader2 className="h-4 w-4 animate-spin" /> Requesting…</>
-                                                : <><Camera className="h-4 w-4" /> Request Capture</>
-                                            }
-                                        </Button>
-                                    </div>
-
-                                    {/* Captures list */}
-                                    <div ref={captureListRef} className="flex-1 overflow-y-auto min-h-0 pb-3 pr-1">
-                                        {allLogs.map((log, index) => (
-                                            <button
-                                                key={log.id}
-                                                data-active={index === fsImageIndex ? "true" : undefined}
-                                                onClick={() => setFsImageIndex(index)}
-                                                className={`w-full px-4 py-2.5 flex items-center justify-between text-left transition-colors border-l-2 ${
-                                                    index === fsImageIndex
-                                                        ? "bg-blue-50 border-blue-500"
-                                                        : "hover:bg-gray-50 border-transparent"
-                                                }`}
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs text-gray-400 w-5 text-right shrink-0">{index + 1}</span>
-                                                    <span className="text-xs text-gray-600">
-                                                        {new Date(log.ts * 1000).toLocaleTimeString()}
-                                                    </span>
-                                                </div>
-                                                {log.status === "timeout" ? (
-                                                    <span className="text-xs font-medium text-orange-500 flex items-center gap-1">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block shrink-0" />
-                                                        Timeout
-                                                    </span>
-                                                ) : (
-                                                    <span className={`text-xs font-semibold ${log.total_count > 0 ? "text-gray-900" : "text-gray-400"}`}>
-                                                        {log.total_count} {log.total_count === 1 ? "person" : "persons"}
-                                                    </span>
-                                                )}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
+                        {/* Modal body — HeadcountCarousel fills the remaining space */}
+                        <div className="flex-1 overflow-hidden min-h-0">
+                            <HeadcountCarousel
+                                allLogs={allLogs}
+                                showRequestCapture
+                                requesting={requesting}
+                                onRequestCapture={requestCapture}
+                                isEpisodeActive={activeEpisode?.status === "active"}
+                                initialIndex={currentImageIndex}
+                            />
                         </div>
                     </div>
-                );
-            })()}
-
-            {/* ── Image lightbox ─────────────────────────────────────────────────── */}
-            {imageLightbox && (() => {
-                const fsLog = allLogs[fsImageIndex] as HeadcountLog | undefined;
-                if (!fsLog?.image_url) return null;
-                return (
-                    <div
-                        className="fixed inset-0 z-[200] bg-black flex items-center justify-center"
-                        onClick={() => setImageLightbox(false)}
-                    >
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="absolute top-4 right-4 text-white bg-white/20 hover:bg-white/35"
-                            onClick={() => setImageLightbox(false)}
-                        >
-                            <X className="h-6 w-6" />
-                        </Button>
-                        <img
-                            src={fsLog.image_url}
-                            alt="Headcount capture"
-                            className="max-w-full max-h-full object-contain"
-                            onClick={(e) => e.stopPropagation()}
-                        />
-                    </div>
-                );
-            })()}
+                </div>
+            )}
         </PageLayout>
     );
 }

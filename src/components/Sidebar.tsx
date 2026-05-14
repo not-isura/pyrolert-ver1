@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, BarChart3, FileText } from "lucide-react";
+import { Home, BarChart3, FileText, ClipboardList } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -19,11 +19,17 @@ const navItems = [
     path: "/room-data",
     roles: ['admin', 'security', 'dean', 'facility', 'director'] 
   },
-  { 
-    title: "All Event Logs", 
-    icon: FileText, 
+  {
+    title: "All Event Logs",
+    icon: FileText,
     path: "/event-logs",
-    roles: ['admin', 'security', 'dean', 'facility', 'director'] 
+    roles: ['admin', 'security', 'dean', 'facility', 'director']
+  },
+  {
+    title: "Alert Episode Logs",
+    icon: ClipboardList,
+    path: "/alert-logs",
+    roles: ['admin', 'security', 'dean', 'facility', 'director'],
   },
 ];
 
