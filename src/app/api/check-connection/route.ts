@@ -117,7 +117,8 @@ export async function GET(req: NextRequest) {
 
     // Transition: connected → disconnected
     if (wasConnected && !isConnected) {
-      const disconnectedAt = new Date().toLocaleString('en-US', {
+      const disconnectedAt = new Date().toLocaleString('en-PH', {
+        timeZone: 'Asia/Manila',
         month: 'long', day: 'numeric', year: 'numeric',
         hour: 'numeric', minute: '2-digit', second: '2-digit',
         hour12: true,
