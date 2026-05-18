@@ -13,6 +13,7 @@ import { useAlertSound } from "@/hooks/useAlertSound";
 import { useHeadcount } from "@/hooks/useHeadcount";
 import HeadcountCarousel from "@/components/HeadcountCarousel";
 import { useDeviceConnection } from "@/hooks/useDeviceConnection";
+import { useAuth } from "@/app/providers";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,16 +21,20 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import {
     Archive,
     Camera,
     CheckCircle,
+    ChevronDown,
     ChevronLeft,
     ChevronRight,
+    ChevronUp,
     HelpCircle,
     Loader2,
     RefreshCw,
@@ -127,6 +132,8 @@ export default function MonitoringDashboard() {
     const { webMuted, toggleWebMuted } = useAlertSound(activeEpisode);
     const { cardLogs, allLogs, totalCaptured, requesting, requestCapture } = useHeadcount(activeEpisode?.id ?? null);
     const { isDeviceConnected } = useDeviceConnection(readings);
+    const { user } = useAuth();
+    const canAct = user?.role === "admin" || user?.role === "security" || user?.role === "facility";
 
     // Reset card carousel to index 0 when a new capture arrives
     useEffect(() => {
@@ -144,6 +151,9 @@ export default function MonitoringDashboard() {
     const [modalLoading, setModalLoading] = useState(false);
     const [isActing, setIsActing] = useState(false);
     const [pendingAction, setPendingAction] = useState<"resolved" | "false_alarm" | null>(null);
+    const [confirmAction, setConfirmAction] = useState<"resolved" | "false_alarm" | null>(null);
+    const [resolutionMessage, setResolutionMessage] = useState("");
+    const [showResolutionBanner, setShowResolutionBanner] = useState(true);
     const [successBanner, setSuccessBanner] = useState<string | null>(null);
     const [errorBanner, setErrorBanner] = useState<string | null>(null);
     const [rpiActive, setRpiActive] = useState(false);
@@ -219,38 +229,33 @@ export default function MonitoringDashboard() {
         }, 10000);
     }, [activeEpisode]);
 
-    const handleResolve = useCallback(async () => {
+    const handleResolve = useCallback(() => {
         if (!activeEpisode) return;
-        prevAcknowledgedAtRef.current = activeEpisode.rpi_acknowledged_at;
-        pendingActionRef.current = "resolved";
-        setPendingAction("resolved");
-        setIsActing(true);
-        await supabase
-            .from("alert_episodes")
-            .update({ status: "resolved" } as never)
-            .eq("id", activeEpisode.id);
-        actingTimeoutRef.current = setTimeout(async () => {
-            actingTimeoutRef.current = null;
-            await supabase
-                .from("alert_episodes")
-                .update({ status: "active" } as never)
-                .eq("id", activeEpisode.id);
-            setIsActing(false);
-            setPendingAction(null);
-            pendingActionRef.current = null;
-            setErrorBanner("Action timed out — RPi did not respond. Reverted to active.");
-        }, 10000);
+        setResolutionMessage("");
+        setConfirmAction("resolved");
     }, [activeEpisode]);
 
-    const handleFalseAlarm = useCallback(async () => {
+    const handleFalseAlarm = useCallback(() => {
         if (!activeEpisode) return;
+        setResolutionMessage("");
+        setConfirmAction("false_alarm");
+    }, [activeEpisode]);
+
+    const handleConfirmAction = useCallback(async () => {
+        if (!activeEpisode || !confirmAction) return;
+        const action = confirmAction;
+        setConfirmAction(null);
         prevAcknowledgedAtRef.current = activeEpisode.rpi_acknowledged_at;
-        pendingActionRef.current = "false_alarm";
-        setPendingAction("false_alarm");
+        pendingActionRef.current = action;
+        setPendingAction(action);
         setIsActing(true);
         await supabase
             .from("alert_episodes")
-            .update({ status: "false_alarm" } as never)
+            .update({
+                status: action,
+                resolved_by: user ? `${user.firstName} ${user.lastName}` : null,
+                resolution_message: resolutionMessage.trim() || null,
+            } as never)
             .eq("id", activeEpisode.id);
         actingTimeoutRef.current = setTimeout(async () => {
             actingTimeoutRef.current = null;
@@ -263,7 +268,7 @@ export default function MonitoringDashboard() {
             pendingActionRef.current = null;
             setErrorBanner("Action timed out — RPi did not respond. Reverted to active.");
         }, 10000);
-    }, [activeEpisode]);
+    }, [activeEpisode, confirmAction, resolutionMessage, user]);
 
     const handleDismiss = useCallback(async () => {
         if (!activeEpisode) return;
@@ -759,7 +764,7 @@ export default function MonitoringDashboard() {
                                                     View Report
                                                 </Button>
                                             </DialogTrigger>
-                                            <DialogContent className="max-w-5xl h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
+                                            <DialogContent className="max-w-5xl flex flex-col gap-0 p-0 overflow-hidden" style={{ height: "calc(100vh - 2rem)" }}>
                                                 {/* ── Sticky header ── */}
                                                 <div className="shrink-0 px-6 pt-6 pb-4 border-b border-gray-100 pr-14 flex flex-col gap-3">
                                                     <div className="flex items-center gap-2">
@@ -884,7 +889,7 @@ export default function MonitoringDashboard() {
 
                                                         <div className="w-px self-stretch bg-gray-200 shrink-0" />
 
-                                                        {/* Right: alert state history */}
+                                                        {/* Middle: alert state history */}
                                                         <div className="shrink-0 flex flex-col gap-1.5">
                                                             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Alert State History</p>
                                                             <div className="space-y-1 overflow-y-auto max-h-20">
@@ -902,27 +907,78 @@ export default function MonitoringDashboard() {
                                                                 ))}
                                                             </div>
                                                         </div>
+
                                                     </div>
                                                 </div>
 
-                                                {/* ── Scrollable body: sensor graphs only ── */}
-                                                <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4">
-                                                    {/* Sensor graphs section header with reload */}
-                                                    <div className="flex items-center justify-between">
-                                                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                                            Sensor Readings at Alert Time
-                                                        </p>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-7 gap-1.5 text-xs text-muted-foreground"
-                                                            disabled={modalLoading}
-                                                            onClick={fetchModalReadings}
+                                                {/* ── Resolution banner (resolved / false alarm only) ── */}
+                                                {(activeEpisode.status === "resolved" || activeEpisode.status === "false_alarm") && (
+                                                    <div className="mx-6 mb-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
+                                                        {/* Banner header — always visible */}
+                                                        <button
+                                                            className="flex items-center gap-3 w-full group"
+                                                            onClick={() => setShowResolutionBanner(v => !v)}
                                                         >
-                                                            <RefreshCw className={`h-3 w-3 ${modalLoading ? "animate-spin" : ""}`} />
-                                                            Reload
-                                                        </Button>
+                                                            <span className="text-xs font-semibold uppercase tracking-wide text-amber-700">Resolution and Message Report</span>
+                                                            <div className="flex-1" />
+                                                            {showResolutionBanner
+                                                                ? <ChevronUp className="h-3.5 w-3.5 text-amber-500 group-hover:text-amber-700" />
+                                                                : <ChevronDown className="h-3.5 w-3.5 text-amber-500 group-hover:text-amber-700" />
+                                                            }
+                                                        </button>
+
+                                                        {/* Collapsible body */}
+                                                        {showResolutionBanner && (
+                                                            <div className="flex gap-6 mt-2">
+                                                                {/* Left: resolution metadata */}
+                                                                <div className="flex flex-col gap-1.5 shrink-0">
+                                                                    <div className="flex items-center gap-2 text-xs">
+                                                                        <span className="text-amber-600 w-20 shrink-0">Resolved By</span>
+                                                                        <span className="font-medium text-amber-900">{activeEpisode.resolved_by ?? "—"}</span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 text-xs">
+                                                                        <span className="text-amber-600 w-20 shrink-0">Resolved At</span>
+                                                                        <span className="font-medium text-amber-900">
+                                                                            {activeEpisode.rpi_acknowledged_at ? new Date(activeEpisode.rpi_acknowledged_at).toLocaleString() : "—"}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Divider */}
+                                                                <div className="w-px self-stretch bg-amber-200 shrink-0" />
+
+                                                                {/* Right: message */}
+                                                                <div className="flex-1 flex flex-col gap-1.5">
+                                                                    {activeEpisode.resolution_message ? (
+                                                                        <p className="text-xs text-amber-800 leading-relaxed">{activeEpisode.resolution_message}</p>
+                                                                    ) : (
+                                                                        <p className="text-xs text-amber-400 italic">No message provided.</p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
+                                                )}
+
+                                                {/* ── Sensor graphs header (fixed) ── */}
+                                                <div className="px-6 py-2 flex items-center justify-between border-t border-gray-100 shrink-0">
+                                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                                        Sensor Readings at Alert Time
+                                                    </p>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-7 gap-1.5 text-xs text-muted-foreground"
+                                                        disabled={modalLoading}
+                                                        onClick={fetchModalReadings}
+                                                    >
+                                                        <RefreshCw className={`h-3 w-3 ${modalLoading ? "animate-spin" : ""}`} />
+                                                        Reload
+                                                    </Button>
+                                                </div>
+
+                                                {/* ── Scrollable body: sensor graphs only ── */}
+                                                <div className="flex-1 overflow-y-auto px-6 pb-4 flex flex-col gap-4">
 
                                                     {modalLoading ? (
                                                         <div className="flex items-center justify-center h-32">
@@ -1031,7 +1087,7 @@ export default function MonitoringDashboard() {
                                                                     <Button
                                                                         variant="outline"
                                                                         size="sm"
-                                                                        disabled={buzzerPending || isActing}
+                                                                        disabled={buzzerPending || isActing || !canAct}
                                                                         onClick={handleMuteToggle}
                                                                         className="gap-1.5 text-xs"
                                                                     >
@@ -1052,7 +1108,7 @@ export default function MonitoringDashboard() {
                                                                 <Button
                                                                     variant="outline"
                                                                     size="sm"
-                                                                    disabled={isActing || rpiActive}
+                                                                    disabled={isActing || rpiActive || !canAct}
                                                                     onClick={handleResolve}
                                                                     className="gap-1.5 text-xs text-green-700 border-green-300 hover:bg-green-50"
                                                                 >
@@ -1069,7 +1125,7 @@ export default function MonitoringDashboard() {
                                                                 <Button
                                                                     variant="outline"
                                                                     size="sm"
-                                                                    disabled={isActing || rpiActive}
+                                                                    disabled={isActing || rpiActive || !canAct}
                                                                     onClick={handleFalseAlarm}
                                                                     className="gap-1.5 text-xs text-muted-foreground"
                                                                 >
@@ -1097,6 +1153,43 @@ export default function MonitoringDashboard() {
                                                         </div>
                                                     </div>
                                                 </div>
+
+                                                {/* Resolve / False Alarm confirmation modal */}
+                                                <Dialog open={confirmAction !== null} onOpenChange={(open) => { if (!open) setConfirmAction(null); }}>
+                                                    <DialogContent className="sm:max-w-md">
+                                                        <DialogHeader>
+                                                            <DialogTitle>
+                                                                {confirmAction === "resolved" ? "Resolve Alert" : "Mark as False Alarm"}
+                                                            </DialogTitle>
+                                                            <DialogDescription>
+                                                                {confirmAction === "resolved"
+                                                                    ? "Provide a resolution message before closing this alert."
+                                                                    : "Provide a reason for marking this alert as a false alarm."}
+                                                            </DialogDescription>
+                                                        </DialogHeader>
+                                                        <div className="py-2">
+                                                            <Textarea
+                                                                placeholder="Enter resolution message…"
+                                                                value={resolutionMessage}
+                                                                onChange={(e) => setResolutionMessage(e.target.value)}
+                                                                className="resize-none"
+                                                                rows={4}
+                                                            />
+                                                        </div>
+                                                        <DialogFooter className="gap-2">
+                                                            <Button variant="outline" onClick={() => setConfirmAction(null)}>
+                                                                Cancel
+                                                            </Button>
+                                                            <Button
+                                                                disabled={!resolutionMessage.trim()}
+                                                                onClick={handleConfirmAction}
+                                                                className={confirmAction === "resolved" ? "bg-green-600 hover:bg-green-700 text-white" : ""}
+                                                            >
+                                                                {confirmAction === "resolved" ? "Confirm Resolve" : "Confirm False Alarm"}
+                                                            </Button>
+                                                        </DialogFooter>
+                                                    </DialogContent>
+                                                </Dialog>
                                             </DialogContent>
                                         </Dialog>
                                     </div>
@@ -1154,7 +1247,10 @@ export default function MonitoringDashboard() {
 
                                     {/* Snapshot carousel */}
                                     {cardLogs.length === 0 ? (
-                                        <div className="aspect-video bg-muted rounded-lg flex flex-col items-center justify-center gap-2">
+                                        <div
+                                            className="aspect-video bg-muted rounded-lg flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-muted/80 transition-colors"
+                                            onClick={openFullscreen}
+                                        >
                                             {requesting ? (
                                                 <>
                                                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

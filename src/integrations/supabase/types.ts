@@ -65,6 +65,8 @@ export type Database = {
           rpi_acknowledged_at: string | null
           dismissed_at: string | null
           headcount_requested: boolean
+          resolved_by: string | null
+          resolution_message: string | null
         }
         Insert: {
           id?: number
@@ -78,6 +80,8 @@ export type Database = {
           rpi_acknowledged_at?: string | null
           dismissed_at?: string | null
           headcount_requested?: boolean
+          resolved_by?: string | null
+          resolution_message?: string | null
         }
         Update: {
           id?: number
@@ -91,6 +95,8 @@ export type Database = {
           rpi_acknowledged_at?: string | null
           dismissed_at?: string | null
           headcount_requested?: boolean
+          resolved_by?: string | null
+          resolution_message?: string | null
         }
       }
       alert_transitions: {
@@ -120,33 +126,39 @@ export type Database = {
         Row: {
           id: string
           first_name: string
+          middle_name: string | null
           last_name: string
           email: string
-          password: string
-          role: 'security' | 'admin' | 'dean' | 'facility'
+          role: 'security' | 'admin' | 'dean' | 'facility' | 'director'
           status: 'active' | 'inactive'
+          employee_number: string | null
+          auth_user_id: string | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
           first_name: string
+          middle_name?: string | null
           last_name: string
           email: string
-          password: string
-          role: 'security' | 'admin' | 'dean' | 'facility'
+          role: 'security' | 'admin' | 'dean' | 'facility' | 'director'
           status?: 'active' | 'inactive'
+          employee_number?: string | null
+          auth_user_id?: string | null
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
           first_name?: string
+          middle_name?: string | null
           last_name?: string
           email?: string
-          password?: string
-          role?: 'security' | 'admin' | 'dean' | 'facility'
+          role?: 'security' | 'admin' | 'dean' | 'facility' | 'director'
           status?: 'active' | 'inactive'
+          employee_number?: string | null
+          auth_user_id?: string | null
           created_at?: string
           updated_at?: string
         }

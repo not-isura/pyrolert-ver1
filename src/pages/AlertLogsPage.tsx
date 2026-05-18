@@ -17,7 +17,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, HelpCircle, Loader2, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, HelpCircle, Loader2, X } from "lucide-react";
 
 // ── Sensor config (mirrors MonitoringDashboard) ──────────────────────────────
 
@@ -31,12 +31,12 @@ type SensorDisplayData = {
 };
 
 const STATIC_SENSORS: SensorDisplayData[] = [
-    { name: "CO",          dataKey: "gas_co",   color: "#ef4444", unit: "ppm",   minVal: 0,  maxVal: 100 },
-    { name: "NO2",         dataKey: "gas_no2",  color: "#f97316", unit: "ppm",   minVal: 0,  maxVal: 5   },
-    { name: "PM2.5",       dataKey: "pm25",     color: "#8b5cf6", unit: "ug/m3", minVal: 0,  maxVal: 50  },
-    { name: "O2",          dataKey: "gas_o2",   color: "#22c55e", unit: "%",     minVal: 10, maxVal: 25  },
-    { name: "Temperature", dataKey: "temp_c",   color: "#3b82f6", unit: "C",     minVal: 20, maxVal: 70  },
-    { name: "Temp RoC",    dataKey: "temp_roc", color: "#06b6d4", unit: "C/min", minVal: -2, maxVal: 10  },
+    { name: "CO", dataKey: "gas_co", color: "#ef4444", unit: "ppm", minVal: 0, maxVal: 100 },
+    { name: "NO2", dataKey: "gas_no2", color: "#f97316", unit: "ppm", minVal: 0, maxVal: 5 },
+    { name: "PM2.5", dataKey: "pm25", color: "#8b5cf6", unit: "ug/m3", minVal: 0, maxVal: 50 },
+    { name: "O2", dataKey: "gas_o2", color: "#22c55e", unit: "%", minVal: 10, maxVal: 25 },
+    { name: "Temperature", dataKey: "temp_c", color: "#3b82f6", unit: "C", minVal: 20, maxVal: 70 },
+    { name: "Temp RoC", dataKey: "temp_roc", color: "#06b6d4", unit: "C/min", minVal: -2, maxVal: 10 },
 ];
 
 type StatusLevel = "normal" | "warning" | "high_alert";
@@ -44,13 +44,13 @@ type StatusLevel = "normal" | "warning" | "high_alert";
 const getSensorThreshold = (sensorName: string, status: StatusLevel): number | undefined => {
     if (status !== "warning" && status !== "high_alert") return undefined;
     switch (sensorName) {
-        case "CO":          return status === "high_alert" ? 60  : 25;
-        case "NO2":         return status === "high_alert" ? 1   : 0.2;
-        case "PM2.5":       return status === "high_alert" ? 150 : 90;
-        case "O2":          return status === "high_alert" ? 18  : 19;
+        case "CO": return status === "high_alert" ? 60 : 25;
+        case "NO2": return status === "high_alert" ? 1 : 0.2;
+        case "PM2.5": return status === "high_alert" ? 150 : 90;
+        case "O2": return status === "high_alert" ? 18 : 19;
         case "Temperature": return 57.2;
-        case "Temp RoC":    return 8;
-        default:            return undefined;
+        case "Temp RoC": return 8;
+        default: return undefined;
     }
 };
 
@@ -81,16 +81,67 @@ const formatIso = (iso: string | null) => {
 const stateLabel = (state: string) => {
     const s = state.trim().toLowerCase().replace(/\s+/g, "_");
     if (s === "high_alert") return "High Alert";
-    if (s === "warning")    return "Warning";
+    if (s === "warning") return "Warning";
     return state;
 };
 
 const stateColor = (state: string): string => {
     const s = state.trim().toLowerCase().replace(/\s+/g, "_");
     if (s === "high_alert") return "#dc2626";
-    if (s === "warning")    return "#d97706";
+    if (s === "warning") return "#d97706";
     return "#6b7280";
 };
+
+// ── Resolution Banner ─────────────────────────────────────────────────────────
+
+function ResolutionBanner({ episode }: { episode: AlertEpisodeLog }) {
+    const [open, setOpen] = useState(true);
+
+    return (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 mb-3">
+            <button
+                className="flex items-center gap-3 w-full group"
+                onClick={() => setOpen(v => !v)}
+            >
+                <span className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                    Resolution and Message Report
+                </span>
+                <div className="flex-1" />
+                {open
+                    ? <ChevronUp className="h-3.5 w-3.5 text-amber-500 group-hover:text-amber-700" />
+                    : <ChevronDown className="h-3.5 w-3.5 text-amber-500 group-hover:text-amber-700" />
+                }
+            </button>
+
+            {open && (
+                <div className="flex gap-6 mt-2">
+                    <div className="flex flex-col gap-1.5 shrink-0">
+                        <div className="flex items-center gap-2 text-xs">
+                            <span className="text-amber-600 w-20 shrink-0">Resolved By</span>
+                            <span className="font-medium text-amber-900">{episode.resolved_by ?? "—"}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                            <span className="text-amber-600 w-20 shrink-0">Resolved At</span>
+                            <span className="font-medium text-amber-900">
+                                {episode.rpi_acknowledged_at ? new Date(episode.rpi_acknowledged_at).toLocaleString() : "—"}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="w-px self-stretch bg-amber-200 shrink-0" />
+
+                    <div className="flex-1 flex flex-col justify-center">
+                        {episode.resolution_message ? (
+                            <p className="text-xs text-amber-800 leading-relaxed">{episode.resolution_message}</p>
+                        ) : (
+                            <p className="text-xs text-amber-400 italic">No message provided.</p>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
 
 // ── Detail Modal ──────────────────────────────────────────────────────────────
 
@@ -103,22 +154,22 @@ function DetailModal({
     episode: AlertEpisodeLog;
     onClose: () => void;
 }) {
-    const [activeTab,    setActiveTab]    = useState<Tab>("overview");
-    const [beforeVal,    setBeforeVal]    = useState(30);
-    const [beforeUnit,   setBeforeUnit]   = useState<"s" | "min">("s");
-    const [afterVal,     setAfterVal]     = useState(30);
-    const [afterUnit,    setAfterUnit]    = useState<"s" | "min">("s");
+    const [activeTab, setActiveTab] = useState<Tab>("overview");
+    const [beforeVal, setBeforeVal] = useState(30);
+    const [beforeUnit, setBeforeUnit] = useState<"s" | "min">("s");
+    const [afterVal, setAfterVal] = useState(30);
+    const [afterUnit, setAfterUnit] = useState<"s" | "min">("s");
 
     // Committed values — only update when user clicks Apply
     const [committedBefore, setCommittedBefore] = useState(30);
-    const [committedAfter,  setCommittedAfter]  = useState(30);
+    const [committedAfter, setCommittedAfter] = useState(30);
 
     const applyRange = () => {
         setCommittedBefore(beforeVal * (beforeUnit === "min" ? 60 : 1));
-        setCommittedAfter(afterVal   * (afterUnit  === "min" ? 60 : 1));
+        setCommittedAfter(afterVal * (afterUnit === "min" ? 60 : 1));
     };
 
-    const chartsRef   = useRef<IChartApi[]>([]);
+    const chartsRef = useRef<IChartApi[]>([]);
     const isSyncingRef = useRef(false);
 
     const handleChartCreated = useCallback((chart: IChartApi) => {
@@ -154,21 +205,19 @@ function DetailModal({
         return lines;
     }, [episode.started_ts, episode.last_updated_ts, transitions]);
 
-    const isResolved = episode.status === "resolved";
-
     return (
         <div
-            className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4"
+            className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4"
         >
             <div
-                className="w-full max-w-5xl bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+                className="w-full max-w-5xl bg-white rounded-lg shadow-lg flex flex-col overflow-hidden"
                 style={{ height: "calc(100vh - 2rem)" }}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* ── Header ── */}
                 <div className="px-6 pt-4 pb-0 border-b shrink-0">
                     {/* Title row */}
-                    <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="flex items-start justify-between gap-4 mb-0">
                         <div className="flex items-center gap-2">
                             <span className="text-lg font-bold text-brand-blue">Alert Episode Report</span>
                             <Dialog>
@@ -196,7 +245,7 @@ function DetailModal({
                                         <tbody>
                                             {[
                                                 { label: "Alert Start", color: "#ef4444", dashed: false, desc: "Marks triggered_at — the moment the alert episode began." },
-                                                { label: "Transition",  color: "#f97316", dashed: true,  desc: "Marks when the alert escalated from Warning to High Alert." },
+                                                { label: "Transition", color: "#f97316", dashed: true, desc: "Marks when the alert escalated from Warning to High Alert." },
                                                 { label: "Last Active", color: "#94a3b8", dashed: false, desc: "Marks last_updated_ts — the last recorded update of the active episode." },
                                             ].map(({ label, color, dashed, desc }) => (
                                                 <tr key={label} className="border-b border-gray-50">
@@ -297,33 +346,8 @@ function DetailModal({
                         </div>
                     </div>
 
-                    {/* Resolved by + conclusion badge + Resolution time */}
-                    <div className="flex items-center gap-3 text-xs pb-3 border-t pt-3 flex-wrap">
-                        <span
-                            className="text-xs font-semibold px-2 py-0.5 rounded-full border"
-                            style={{
-                                color:           isResolved ? "#16a34a" : "#6b7280",
-                                borderColor:     isResolved ? "#bbf7d0" : "#e5e7eb",
-                                backgroundColor: isResolved ? "#f0fdf4" : "#f9fafb",
-                            }}
-                        >
-                            {isResolved ? "Resolved" : "False Alarm"}
-                        </span>
-                        <span className="text-gray-300">·</span>
-                        <div className="flex items-center gap-1.5">
-                            <span className="text-muted-foreground">Resolved by</span>
-                            <span className="font-medium text-gray-700">Pyrolert Admin</span>
-                        </div>
-                        {episode.rpi_acknowledged_at && (
-                            <>
-                                <span className="text-gray-300">·</span>
-                                <div className="flex items-center gap-1.5">
-                                    <span className="text-muted-foreground">Resolution time</span>
-                                    <span className="font-medium text-gray-700">{formatIso(episode.rpi_acknowledged_at)}</span>
-                                </div>
-                            </>
-                        )}
-                    </div>
+                    {/* Resolution and Message Report banner */}
+                    <ResolutionBanner episode={episode} />
 
                     {/* Tab bar */}
                     <div className="flex gap-1 border-b -mb-px">
@@ -331,11 +355,10 @@ function DetailModal({
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
-                                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                                    activeTab === tab
+                                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === tab
                                         ? "border-blue-500 text-blue-600"
                                         : "border-transparent text-gray-500 hover:text-gray-700"
-                                }`}
+                                    }`}
                             >
                                 {tab === "overview" ? "Overview" : `Camera Snapshots${headcountLogs.length > 0 ? ` (${headcountLogs.length})` : ""}`}
                             </button>
@@ -528,9 +551,9 @@ export default function AlertLogsPage() {
                                     </td>
                                 </tr>
                             ) : episodes.map((ep, idx) => {
-                                const displayNum  = page * LOGS_PAGE_SIZE + idx + 1;
+                                const displayNum = page * LOGS_PAGE_SIZE + idx + 1;
                                 const isHighAlert = ep.current_state.trim().toLowerCase().replace(/\s+/g, "_") === "high_alert";
-                                const isResolved  = ep.status === "resolved";
+                                const isResolved = ep.status === "resolved";
 
                                 return (
                                     <tr
@@ -548,8 +571,8 @@ export default function AlertLogsPage() {
                                             <span
                                                 className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full border"
                                                 style={{
-                                                    color:           isHighAlert ? "#dc2626" : "#d97706",
-                                                    borderColor:     isHighAlert ? "#fca5a5" : "#fcd34d",
+                                                    color: isHighAlert ? "#dc2626" : "#d97706",
+                                                    borderColor: isHighAlert ? "#fca5a5" : "#fcd34d",
                                                     backgroundColor: isHighAlert ? "#fef2f2" : "#fffbeb",
                                                 }}
                                             >
@@ -560,15 +583,15 @@ export default function AlertLogsPage() {
                                             <span
                                                 className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full border"
                                                 style={{
-                                                    color:           isResolved ? "#16a34a" : "#6b7280",
-                                                    borderColor:     isResolved ? "#bbf7d0" : "#e5e7eb",
+                                                    color: isResolved ? "#16a34a" : "#6b7280",
+                                                    borderColor: isResolved ? "#bbf7d0" : "#e5e7eb",
                                                     backgroundColor: isResolved ? "#f0fdf4" : "#f9fafb",
                                                 }}
                                             >
                                                 {isResolved ? "Resolved" : "False Alarm"}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3 text-gray-600 text-xs">Pyrolert Admin</td>
+                                        <td className="px-4 py-3 text-gray-600 text-xs">{ep.resolved_by ?? "—"}</td>
                                         <td className="px-4 py-3 text-gray-600 text-xs">
                                             {formatIso(ep.rpi_acknowledged_at)}
                                         </td>
