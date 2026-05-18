@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-export type SensorStatusType = "normal" | "warning" | "critical";
+export type SensorStatusType = "normal" | "warning" | "high_alert" | "offline";
 
 interface SensorStatusBadgeProps {
   status: SensorStatusType;
@@ -18,24 +18,29 @@ const sensorStatusConfig = {
     bg: "#FFF4E5",
     color: "hsl(var(--brand-orange))",
   },
-  critical: {
-    label: "CRITICAL",
+  high_alert: {
+    label: "HIGH ALERT",
     bg: "#FFE5E5",
     color: "hsl(var(--brand-red))",
+  },
+  offline: {
+    label: "OFFLINE",
+    bg: "#F3F4F6",
+    color: "#9CA3AF",
   },
 };
 
 export const SensorStatusBadge = ({ status, className }: SensorStatusBadgeProps) => {
   const config = sensorStatusConfig[status];
-  
+
   return (
-    <div 
+    <div
       className={cn("px-3 py-0.5 rounded-full inline-flex items-center justify-center", className)}
       style={{
         backgroundColor: config.bg,
       }}
     >
-      <span 
+      <span
         className="text-[10px] font-bold"
         style={{
           color: config.color

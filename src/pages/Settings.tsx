@@ -3,8 +3,8 @@
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, FileText, UserPlus, Database, DoorOpen } from "lucide-react";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { User, FileText, UserPlus, Database } from "lucide-react";
 import { usePermissions } from "@/hooks/use-permissions";
 
 const settingsOptions = [
@@ -34,13 +34,6 @@ const settingsOptions = [
     description: "Manage existing user accounts",
     icon: Database,
     path: "/settings/users",
-    roles: ['admin'], // Admin only
-  },
-  {
-    title: "Room Management",
-    description: "Edit room details and manage sensors",
-    icon: DoorOpen,
-    path: "/settings/rooms",
     roles: ['admin'], // Admin only
   },
 ];

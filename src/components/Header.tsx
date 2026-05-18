@@ -62,7 +62,7 @@ export const Header = ({ onSettings }: HeaderProps) => {
   };
 
   const navItems = [
-    { title: "Dashboard", icon: Home, path: "/dashboard" },
+    { title: "Dashboard", icon: Home, path: "/dashboard-1" },
     { title: "Room Recent Data", icon: BarChart3, path: "/room-data" },
     { title: "All Event Logs", icon: FileText, path: "/event-logs" },
   ];

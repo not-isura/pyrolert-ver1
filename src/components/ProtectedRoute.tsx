@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getCurrentUser, type UserRole } from "@/services/supabaseService";
 import { useAuth } from "@/app/providers";
+import type { UserRole } from "@/services/supabaseService";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -12,40 +12,20 @@ interface ProtectedRouteProps {
 
 export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const router = useRouter();
-  const [isChecking, setIsChecking] = useState(true);
-  const [isAuthorized, setIsAuthorized] = useState(false);
-  const { isLoading: isAuthLoading } = useAuth();
+  const { user, isLoading } = useAuth();
 
   useEffect(() => {
-    const checkAuth = () => {
-      const user = getCurrentUser();
+    if (isLoading) return;
+    if (!user) {
+      router.push("/");
+      return;
+    }
+    if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+      router.push("/");
+    }
+  }, [isLoading, user, router, allowedRoles]);
 
-      // Not authenticated
-      if (!user) {
-        router.push("/");
-        return;
-      }
-
-      // Check role if allowedRoles is specified
-      if (allowedRoles && allowedRoles.length > 0) {
-        if (!allowedRoles.includes(user.role)) {
-          // User doesn't have required role
-          setIsAuthorized(false);
-          setIsChecking(false);
-          return;
-        }
-      }
-
-      // User is authenticated and authorized
-      setIsAuthorized(true);
-      setIsChecking(false);
-    };
-
-    checkAuth();
-  }, [router, allowedRoles]);
-
-  // Show loading while checking authentication or during logout
-  if (isChecking || isAuthLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -56,20 +36,17 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     );
   }
 
-  // Show access denied if not authorized
-  if (!isAuthorized) {
+  if (!user) return null;
+
+  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center max-w-md p-6">
-          <div className="text-6xl mb-4">🚫</div>
           <h1 className="text-2xl font-bold text-brand-blue mb-2">Access Denied</h1>
           <p className="text-muted-foreground mb-4">
             You don't have permission to access this page.
           </p>
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="text-brand-blue hover:underline"
-          >
+          <button onClick={() => router.push("/dashboard-1")} className="text-brand-blue hover:underline">
             Return to Dashboard
           </button>
         </div>
@@ -77,6 +54,5 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     );
   }
 
-  // User is authenticated and authorized
   return <>{children}</>;
 }

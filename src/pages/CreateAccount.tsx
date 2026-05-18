@@ -28,24 +28,27 @@ export default function CreateAccount() {
     role: "",
   });
 
-  const handleRegister = () => {
-    const fullName = `${formData.firstName} ${formData.middleName} ${formData.surname}`.trim();
-    toast({
-      title: "Account Created",
-      description: `Account for ${fullName} has been successfully created.`,
-    });
-    
-    // Reset form
-    setFormData({
-      firstName: "",
-      middleName: "",
-      surname: "",
-      email: "",
-      autoVerify: true,
-      password: "pyrolert_2025!",
-      employeeNumber: "",
-      role: "",
-    });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleRegister = async () => {
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/create-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        toast({ title: "Error", description: json.error ?? "Failed to create account.", variant: "destructive" });
+        return;
+      }
+      const fullName = [formData.firstName, formData.middleName, formData.surname].filter(Boolean).join(' ');
+      toast({ title: "Account Created", description: `Account for ${fullName} has been successfully created.` });
+      setFormData({ firstName: "", middleName: "", surname: "", email: "", autoVerify: true, password: "pyrolert_2025!", employeeNumber: "", role: "" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const allFieldsFilled = formData.firstName && formData.surname && formData.email && 
@@ -216,12 +219,12 @@ export default function CreateAccount() {
                   >
                     Cancel
                   </Button>
-                  <Button 
+                  <Button
                     onClick={handleRegister}
-                    disabled={!allFieldsFilled}
+                    disabled={!allFieldsFilled || isSubmitting}
                     className="bg-brand-blue hover:bg-brand-blue/90"
                   >
-                    Register Account
+                    {isSubmitting ? "Creating…" : "Register Account"}
                   </Button>
                 </div>
               </CardContent>
