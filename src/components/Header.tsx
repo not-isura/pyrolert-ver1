@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { LogOut, Settings, Menu, X, Home, BarChart3, FileText } from "lucide-react";
+import { LogOut, Settings, Menu, X, Home, ClipboardList } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   AlertDialog,
@@ -63,8 +63,8 @@ export const Header = ({ onSettings }: HeaderProps) => {
 
   const navItems = [
     { title: "Dashboard", icon: Home, path: "/dashboard-1" },
-    { title: "Room Recent Data", icon: BarChart3, path: "/room-data" },
-    { title: "All Event Logs", icon: FileText, path: "/event-logs" },
+    { title: "Alert Episode Logs", icon: ClipboardList, path: "/alert-logs" },
+    { title: "Settings", icon: Settings, path: "/settings" },
   ];
 
   const openMobileMenu = () => {
@@ -229,7 +229,7 @@ export const Header = ({ onSettings }: HeaderProps) => {
       <nav className="sticky top-16 z-30 bg-white shadow-md lg:hidden">
         <div className="flex items-center justify-around py-2">
           {navItems.map((item) => {
-            const isActive = pathname === item.path;
+            const isActive = pathname === item.path || (item.path !== "/" && pathname.startsWith(item.path + "/"));
             return (
               <Link
                 key={item.path}
