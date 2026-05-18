@@ -14,37 +14,151 @@ export type Database = {
   }
   public: {
     Tables: {
+      headcount_logs: {
+        Row: {
+          id: number
+          episode_id: number
+          ts: number
+          high_count: number
+          mid_count: number
+          low_count: number
+          total_count: number
+          trigger_source: string
+          image_url: string | null
+          status: string
+        }
+        Insert: {
+          id?: number
+          episode_id: number
+          ts: number
+          high_count?: number
+          mid_count?: number
+          low_count?: number
+          total_count?: number
+          trigger_source?: string
+          image_url?: string | null
+          status?: string
+        }
+        Update: {
+          id?: number
+          episode_id?: number
+          ts?: number
+          high_count?: number
+          mid_count?: number
+          low_count?: number
+          total_count?: number
+          trigger_source?: string
+          image_url?: string | null
+          status?: string
+        }
+      }
+      alert_episodes: {
+        Row: {
+          id: number
+          started_ts: number
+          last_updated_ts: number
+          current_state: string
+          status: string
+          meta: Json | null
+          buzzer_muted: boolean
+          buzzer_status: string
+          rpi_acknowledged_at: string | null
+          dismissed_at: string | null
+          headcount_requested: boolean
+          resolved_by: string | null
+          resolution_message: string | null
+        }
+        Insert: {
+          id?: number
+          started_ts: number
+          last_updated_ts: number
+          current_state: string
+          status?: string
+          meta?: Json | null
+          buzzer_muted?: boolean
+          buzzer_status?: string
+          rpi_acknowledged_at?: string | null
+          dismissed_at?: string | null
+          headcount_requested?: boolean
+          resolved_by?: string | null
+          resolution_message?: string | null
+        }
+        Update: {
+          id?: number
+          started_ts?: number
+          last_updated_ts?: number
+          current_state?: string
+          status?: string
+          meta?: Json | null
+          buzzer_muted?: boolean
+          buzzer_status?: string
+          rpi_acknowledged_at?: string | null
+          dismissed_at?: string | null
+          headcount_requested?: boolean
+          resolved_by?: string | null
+          resolution_message?: string | null
+        }
+      }
+      alert_transitions: {
+        Row: {
+          id: number
+          episode_id: number
+          ts: number
+          state: string
+          meta: Json | null
+        }
+        Insert: {
+          id?: number
+          episode_id: number
+          ts: number
+          state: string
+          meta?: Json | null
+        }
+        Update: {
+          id?: number
+          episode_id?: number
+          ts?: number
+          state?: string
+          meta?: Json | null
+        }
+      }
       users: {
         Row: {
           id: string
           first_name: string
+          middle_name: string | null
           last_name: string
           email: string
-          password: string
-          role: 'security' | 'admin' | 'dean' | 'facility'
+          role: 'security' | 'admin' | 'dean' | 'facility' | 'director'
           status: 'active' | 'inactive'
+          employee_number: string | null
+          auth_user_id: string | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
           first_name: string
+          middle_name?: string | null
           last_name: string
           email: string
-          password: string
-          role: 'security' | 'admin' | 'dean' | 'facility'
+          role: 'security' | 'admin' | 'dean' | 'facility' | 'director'
           status?: 'active' | 'inactive'
+          employee_number?: string | null
+          auth_user_id?: string | null
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
           first_name?: string
+          middle_name?: string | null
           last_name?: string
           email?: string
-          password?: string
-          role?: 'security' | 'admin' | 'dean' | 'facility'
+          role?: 'security' | 'admin' | 'dean' | 'facility' | 'director'
           status?: 'active' | 'inactive'
+          employee_number?: string | null
+          auth_user_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -75,6 +189,45 @@ export type Database = {
           last_updated?: string
           occupants?: number
           occupant_change?: number
+          created_at?: string
+        }
+      }
+      sensor_readings: {
+        Row: {
+          id: number
+          ts: number
+          recorded_at: string | null
+          gas_co: number | null
+          gas_no2: number | null
+          gas_o2: number | null
+          temp_c: number | null
+          temp_roc: number | null
+          pm25: number | null
+          detection_result: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          ts: number
+          gas_co?: number | null
+          gas_no2?: number | null
+          gas_o2?: number | null
+          temp_c?: number | null
+          temp_roc?: number | null
+          pm25?: number | null
+          detection_result?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          ts?: number
+          gas_co?: number | null
+          gas_no2?: number | null
+          gas_o2?: number | null
+          temp_c?: number | null
+          temp_roc?: number | null
+          pm25?: number | null
+          detection_result?: string | null
           created_at?: string
         }
       }

@@ -15,7 +15,6 @@ export interface User {
   first_name: string;
   last_name: string;
   email: string;
-  password: string;
   role: UserRole;
   status: UserStatus;
   created_at: string;
@@ -410,93 +409,63 @@ export interface AuthUser {
 }
 
 export const loginUser = async (email: string, password: string): Promise<AuthUser> => {
-  try {
-    console.log('🔐 Attempting login with email:', email);
-    
-    // First, check if user exists with this email
-    const { data: userByEmail, error: emailError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email);
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw new Error('Invalid email or password');
 
-    console.log('User search by email:', { userByEmail, emailError });
+  const { data: profile, error: profileError } = await supabase
+    .from('users')
+    .select('id, email, role, status, first_name, last_name')
+    .eq('auth_user_id', data.user.id)
+    .single();
 
-    if (emailError) {
-      console.error('Email query error:', emailError);
-      throw new Error('Database error. Please try again.');
-    }
-
-    if (!userByEmail || userByEmail.length === 0) {
-      console.error('No user found with email:', email);
-      throw new Error('Invalid email or password');
-    }
-
-    // Check password
-    const user = userByEmail[0] as any;
-    console.log('User data:', {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      status: user.status,
-      passwordMatch: user.password === password
-    });
-
-    if (user.password !== password) {
-      console.error('Password mismatch');
-      throw new Error('Invalid email or password');
-    }
-
-    // Check if user is active
-    if (user.status !== 'active') {
-      throw new Error('Account is inactive. Please contact administrator.');
-    }
-
-    // Store user session in localStorage
-    const authUser: AuthUser = {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      firstName: user.first_name,
-      lastName: user.last_name,
-    };
-
-    localStorage.setItem('authUser', JSON.stringify(authUser));
-    
-    console.log('✅ Login successful for:', authUser.firstName, authUser.lastName);
-    
-    return authUser;
-  } catch (error) {
-    console.error('Login error:', error);
-    throw error;
+  if (profileError || !profile) throw new Error('Failed to load user profile.');
+  if (profile.status !== 'active') {
+    await supabase.auth.signOut();
+    throw new Error('Account is inactive. Please contact administrator.');
   }
+
+  return {
+    id: profile.id,
+    email: profile.email,
+    role: profile.role as UserRole,
+    firstName: profile.first_name,
+    lastName: profile.last_name,
+  };
 };
 
 export const logoutUser = async (): Promise<void> => {
-  localStorage.removeItem('authUser');
+  await supabase.auth.signOut();
 };
 
-export const getCurrentUser = (): AuthUser | null => {
-  try {
-    const userStr = localStorage.getItem('authUser');
-    if (!userStr) return null;
-    return JSON.parse(userStr);
-  } catch {
-    return null;
-  }
+export const getCurrentUser = async (): Promise<AuthUser | null> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return null;
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('id, email, role, status, first_name, last_name')
+    .eq('auth_user_id', session.user.id)
+    .single();
+
+  if (!profile || profile.status !== 'active') return null;
+
+  return {
+    id: profile.id,
+    email: profile.email,
+    role: profile.role as UserRole,
+    firstName: profile.first_name,
+    lastName: profile.last_name,
+  };
 };
 
-export const isAuthenticated = (): boolean => {
-  return getCurrentUser() !== null;
+export const isAuthenticated = async (): Promise<boolean> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session !== null;
 };
 
-export const hasRole = (requiredRole: UserRole | UserRole[]): boolean => {
-  const user = getCurrentUser();
+export const hasRole = (user: AuthUser | null, requiredRole: UserRole | UserRole[]): boolean => {
   if (!user) return false;
-
   const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
   return roles.includes(user.role);
 };
 
-export const isAdmin = (): boolean => {
-  return hasRole('admin');
-};

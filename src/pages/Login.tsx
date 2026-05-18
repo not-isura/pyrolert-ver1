@@ -34,8 +34,15 @@ export default function Login() {
   const [viewportOffset, setViewportOffset] = useState(0);
   const router = useRouter();
   const { toast } = useToast();
-  const { refreshUser, resetLoading } = useAuth();
+  const { user, isLoading: isAuthLoading, refreshUser, resetLoading } = useAuth();
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    if (!isAuthLoading && user) {
+      router.replace("/dashboard-1");
+    }
+  }, [isAuthLoading, user, router]);
 
   // Reset loading state when login page mounts (after logout)
   useEffect(() => {
@@ -120,7 +127,6 @@ export default function Login() {
       // Redirect to dashboard
       router.push("/dashboard");
     } catch (error) {
-      console.error('Login error:', error);
       toast({
         title: "Login Failed",
         description: error instanceof Error ? error.message : "Invalid email or password",
