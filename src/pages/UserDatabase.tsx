@@ -15,27 +15,26 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Edit, Trash2, ArrowLeft, Eye, EyeOff, AlertTriangle, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  getUsers, 
-  createUser, 
-  updateUser, 
+import { useAuth } from "@/app/providers";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  getUsers,
   deleteUser,
-  type User as SupabaseUser,
   type UserRole,
   type UserStatus
 } from "@/services/supabaseService";
 
 interface User {
   id: string;
-  employeeId?: string;
+  authUserId?: string | null;
+  employeeNumber?: string;
   firstName: string;
   middleName: string;
   surname: string;
   email: string;
   role: "security" | "admin" | "dean" | "facility" | "director";
   status: UserStatusType;
-  password?: string;
-  adminId?: string;
+  newPassword?: string;
 }
 
 const roleLabels = {
@@ -49,6 +48,7 @@ const roleLabels = {
 export default function UserDatabase() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,14 +56,13 @@ export default function UserDatabase() {
   const [entriesPerPage, setEntriesPerPage] = useState("10");
   const [currentPage, setCurrentPage] = useState(1);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [showEditPassword, setShowEditPassword] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [deletePassword, setDeletePassword] = useState("");
   const [showDeletePassword, setShowDeletePassword] = useState(false);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
-  const [viewportOffset, setViewportOffset] = useState(0);
   const [isSelectOpen, setIsSelectOpen] = useState(false);
   const dummyInputRef = useRef<HTMLInputElement>(null);
 
@@ -81,12 +80,14 @@ export default function UserDatabase() {
       // Transform Supabase users to match component interface
       const transformedUsers: User[] = supabaseUsers.map(user => ({
         id: user.id,
+        authUserId: (user as any).auth_user_id ?? null,
         firstName: user.first_name,
-        middleName: "",
+        middleName: (user as any).middle_name ?? "",
         surname: user.last_name,
         email: user.email,
-        role: user.role as "security" | "admin" | "dean" | "facility",
+        role: user.role as "security" | "admin" | "dean" | "facility" | "director",
         status: user.status as UserStatusType,
+        employeeNumber: (user as any).employee_number ?? "",
       }));
       
       setUsers(transformedUsers);
@@ -125,11 +126,6 @@ export default function UserDatabase() {
             setIsKeyboardOpen(isOpen);
           }
           
-          if (window.visualViewport && isOpen) {
-            setViewportOffset(window.visualViewport.offsetTop || 0);
-          } else if (!isSelectOpen) {
-            setViewportOffset(0);
-          }
         }
       }, 50);
     };
@@ -201,15 +197,14 @@ export default function UserDatabase() {
     const userRole = roleLabels[user.role].toLowerCase();
     return fullName.includes(search) ||
       user.email.toLowerCase().includes(search) ||
-      (user.employeeId && user.employeeId.toLowerCase().includes(search)) ||
-      (user.adminId && user.adminId.toLowerCase().includes(search)) ||
+      (user.employeeNumber && user.employeeNumber.toLowerCase().includes(search)) ||
       userRole.includes(search);
   });
 
   const handleEditClick = (user: User) => {
     setEditingUser({ ...user });
     setIsEditDialogOpen(true);
-    setShowPassword(false);
+    setShowEditPassword(false);
     
     // Scroll to top only when first opening
     setTimeout(() => {
@@ -229,13 +224,35 @@ export default function UserDatabase() {
     if (editingUser) {
       try {
         // Update user in Supabase
-        await updateUser(editingUser.id, {
-          first_name: editingUser.firstName,
-          last_name: editingUser.surname,
-          email: editingUser.email,
-          role: editingUser.role as UserRole,
-          status: editingUser.status as UserStatus,
-        });
+        await (supabase as any)
+          .from("users")
+          .update({
+            first_name: editingUser.firstName,
+            middle_name: editingUser.middleName || null,
+            last_name: editingUser.surname,
+            role: editingUser.role as UserRole,
+            status: editingUser.status as UserStatus,
+            employee_number: editingUser.employeeNumber || null,
+            updated_at: new Date().toISOString(),
+          } as never)
+          .eq("id", editingUser.id);
+
+        // Change password if provided
+        if (editingUser.newPassword && editingUser.authUserId) {
+          const res = await fetch('/api/admin/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ authUserId: editingUser.authUserId, newPassword: editingUser.newPassword }),
+          });
+          const json = await res.json();
+          if (!res.ok) {
+            toast({ title: "Profile saved but password failed", description: json.error, variant: "destructive" });
+            setIsEditDialogOpen(false);
+            setEditingUser(null);
+            loadUsers();
+            return;
+          }
+        }
         
         // Update local state
         setUsers(users.map(u => u.id === editingUser.id ? editingUser : u));
@@ -280,7 +297,16 @@ export default function UserDatabase() {
       }
 
       try {
-        // Delete user from Supabase
+        // Verify admin password before deleting
+        const { error: authError } = await supabase.auth.signInWithPassword({
+          email: currentUser?.email ?? "",
+          password: deletePassword,
+        });
+        if (authError) {
+          toast({ title: "Incorrect Password", description: "Password verification failed.", variant: "destructive" });
+          return;
+        }
+
         await deleteUser(deletingUser.id);
         
         // Update local state
@@ -592,42 +618,33 @@ export default function UserDatabase() {
                       id="edit-email"
                       type="email"
                       value={editingUser.email}
-                      onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                      disabled
                       className="h-9 sm:h-10"
                     />
                   </div>
 
                   <div className="space-y-1.5 sm:space-y-2">
-                    <Label htmlFor="edit-password" className="text-sm">Password</Label>
+                    <Label htmlFor="edit-password" className="text-sm">
+                      New Password <span className="text-muted-foreground font-normal">(leave blank to keep current)</span>
+                    </Label>
                     <div className="relative">
                       <Input
                         id="edit-password"
-                        type={showPassword ? "text" : "password"}
-                        value={editingUser.password || ""}
-                        onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
+                        type={showEditPassword ? "text" : "password"}
+                        value={editingUser.newPassword || ""}
+                        onChange={(e) => setEditingUser({ ...editingUser, newPassword: e.target.value })}
+                        placeholder="Enter new password…"
                         className="pr-10 h-9 sm:h-10"
                       />
                       <button
                         type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-icon-secondary hover:text-icon-primary"
+                        onClick={() => setShowEditPassword(v => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showEditPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
                   </div>
-
-                  {isSystemAdmin && (
-                    <div className="space-y-1.5 sm:space-y-2">
-                      <Label htmlFor="edit-adminId" className="text-sm">Admin ID</Label>
-                      <Input
-                        id="edit-adminId"
-                        value={editingUser.adminId || ""}
-                        onChange={(e) => setEditingUser({ ...editingUser, adminId: e.target.value })}
-                        className="h-9 sm:h-10"
-                      />
-                    </div>
-                  )}
 
                   {/* Hidden input to keep keyboard open */}
                   <input
@@ -644,58 +661,15 @@ export default function UserDatabase() {
                     aria-hidden="true"
                   />
 
-                  <div className="space-y-1.5 sm:space-y-2">
-                    <Label htmlFor="edit-status" className="text-sm">Status</Label>
-                    <Select 
-                      value={editingUser.status} 
-                      onValueChange={(value: "active" | "inactive") => setEditingUser({ ...editingUser, status: value })}
-                      onOpenChange={(open) => {
-                        setIsSelectOpen(open);
-                        if (open && dummyInputRef.current) {
-                          // Focus hidden input to keep keyboard open
-                          setTimeout(() => dummyInputRef.current?.focus(), 10);
-                        }
-                      }}
-                    >
-                      <SelectTrigger id="edit-status" className="h-9 sm:h-10">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-
-              {/* User Role - Only for non-admin users */}
-              {!isSystemAdmin && (
-                <div className="space-y-3 sm:space-y-4">
-                  <h3 className="text-base sm:text-lg font-semibold text-brand-blue border-b border-brand-yellow pb-2">
-                    User Role
-                  </h3>
-                  
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-1.5 sm:space-y-2">
-                      <Label htmlFor="edit-employeeId" className="text-sm">Employee Number</Label>
-                      <Input
-                        id="edit-employeeId"
-                        value={editingUser.employeeId || ""}
-                        onChange={(e) => setEditingUser({ ...editingUser, employeeId: e.target.value })}
-                        className="h-9 sm:h-10"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5 sm:space-y-2">
                       <Label htmlFor="edit-role" className="text-sm">Role</Label>
-                      <Select 
-                        value={editingUser.role} 
+                      <Select
+                        value={editingUser.role}
                         onValueChange={(value: User["role"]) => setEditingUser({ ...editingUser, role: value })}
                         onOpenChange={(open) => {
                           setIsSelectOpen(open);
                           if (open && dummyInputRef.current) {
-                            // Focus hidden input to keep keyboard open
                             setTimeout(() => dummyInputRef.current?.focus(), 10);
                           }
                         }}
@@ -712,9 +686,42 @@ export default function UserDatabase() {
                         </SelectContent>
                       </Select>
                     </div>
+
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <Label htmlFor="edit-status" className="text-sm">Status</Label>
+                      <Select
+                        value={editingUser.status}
+                        onValueChange={(value: "active" | "inactive") => setEditingUser({ ...editingUser, status: value })}
+                        onOpenChange={(open) => {
+                          setIsSelectOpen(open);
+                          if (open && dummyInputRef.current) {
+                            setTimeout(() => dummyInputRef.current?.focus(), 10);
+                          }
+                        }}
+                      >
+                        <SelectTrigger id="edit-status" className="h-9 sm:h-10">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
-              )}
+              </div>
+
+              {/* Employee Number */}
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="edit-employeeNumber" className="text-sm">Employee Number</Label>
+                <Input
+                  id="edit-employeeNumber"
+                  value={editingUser.employeeNumber || ""}
+                  onChange={(e) => setEditingUser({ ...editingUser, employeeNumber: e.target.value })}
+                  className="h-9 sm:h-10"
+                />
+              </div>
             </div>
           )}
 
@@ -759,8 +766,7 @@ export default function UserDatabase() {
                   </div>
                   <div className="text-sm text-text-secondary">{deletingUser.email}</div>
                   <div className="text-xs text-text-tertiary">
-                    {deletingUser.adminId ? `Admin ID: ${deletingUser.adminId}` : 
-                     deletingUser.employeeId ? `Employee ID: ${deletingUser.employeeId}` : ''}
+                    {deletingUser.employeeNumber ? `Employee ID: ${deletingUser.employeeNumber}` : ''}
                   </div>
                 </div>
               )}

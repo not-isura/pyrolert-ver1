@@ -930,8 +930,14 @@ export default function MonitoringDashboard() {
                                                         {/* Collapsible body */}
                                                         {showResolutionBanner && (
                                                             <div className="flex gap-6 mt-2">
-                                                                {/* Left: resolution metadata */}
+                                                                {/* Col 1: status + resolution metadata */}
                                                                 <div className="flex flex-col gap-1.5 shrink-0">
+                                                                    <div className="flex items-center gap-2 text-xs">
+                                                                        <span className="text-amber-600 w-20 shrink-0">Status</span>
+                                                                        <span className={`font-bold ${activeEpisode.status === "resolved" ? "text-green-600" : "text-gray-500"}`}>
+                                                                            {activeEpisode.status === "resolved" ? "Resolved" : "False Alarm"}
+                                                                        </span>
+                                                                    </div>
                                                                     <div className="flex items-center gap-2 text-xs">
                                                                         <span className="text-amber-600 w-20 shrink-0">Resolved By</span>
                                                                         <span className="font-medium text-amber-900">{activeEpisode.resolved_by ?? "—"}</span>
@@ -944,11 +950,11 @@ export default function MonitoringDashboard() {
                                                                     </div>
                                                                 </div>
 
-                                                                {/* Divider */}
                                                                 <div className="w-px self-stretch bg-amber-200 shrink-0" />
 
-                                                                {/* Right: message */}
+                                                                {/* Col 2: message */}
                                                                 <div className="flex-1 flex flex-col gap-1.5">
+                                                                    <span className="text-xs text-amber-600">Remarks</span>
                                                                     {activeEpisode.resolution_message ? (
                                                                         <p className="text-xs text-amber-800 leading-relaxed">{activeEpisode.resolution_message}</p>
                                                                     ) : (

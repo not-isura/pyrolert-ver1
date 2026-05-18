@@ -115,7 +115,14 @@ function ResolutionBanner({ episode }: { episode: AlertEpisodeLog }) {
 
             {open && (
                 <div className="flex gap-6 mt-2">
+                    {/* Col 1: status + resolution metadata */}
                     <div className="flex flex-col gap-1.5 shrink-0">
+                        <div className="flex items-center gap-2 text-xs">
+                            <span className="text-amber-600 w-20 shrink-0">Status</span>
+                            <span className={`font-bold ${episode.status === "resolved" ? "text-green-600" : "text-gray-500"}`}>
+                                {episode.status === "resolved" ? "Resolved" : "False Alarm"}
+                            </span>
+                        </div>
                         <div className="flex items-center gap-2 text-xs">
                             <span className="text-amber-600 w-20 shrink-0">Resolved By</span>
                             <span className="font-medium text-amber-900">{episode.resolved_by ?? "—"}</span>
@@ -130,7 +137,9 @@ function ResolutionBanner({ episode }: { episode: AlertEpisodeLog }) {
 
                     <div className="w-px self-stretch bg-amber-200 shrink-0" />
 
-                    <div className="flex-1 flex flex-col justify-center">
+                    {/* Col 2: message */}
+                    <div className="flex-1 flex flex-col gap-1.5">
+                        <span className="text-xs text-amber-600">Remarks</span>
                         {episode.resolution_message ? (
                             <p className="text-xs text-amber-800 leading-relaxed">{episode.resolution_message}</p>
                         ) : (

@@ -8,6 +8,8 @@ create table public.users (
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
   auth_user_id uuid null,
+  middle_name text null,
+  employee_number text null,
   constraint users_pkey primary key (id),
   constraint users_auth_user_id_unique unique (auth_user_id),
   constraint users_email_key unique (email),
