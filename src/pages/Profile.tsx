@@ -35,11 +35,11 @@ export default function Profile() {
     if (user) {
       setFormData({
         firstName: user.firstName || "",
-        middleName: user.middleName || "",
-        surname: user.surname || "",
+        middleName: "",
+        surname: user.lastName || "",
         email: user.email || "",
         role: user.role || "",
-        adminId: user.userId || "",
+        adminId: user.id || "",
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",

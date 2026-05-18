@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { createChart, IChartApi, ISeriesApi, LineData } from "lightweight-charts";
+import { createChart, IChartApi, ISeriesApi, LineData, LineSeries, UTCTimestamp } from "lightweight-charts";
 import { useSensor } from "@/components/SupabaseProvider";
 
 interface MiniChartProps {
@@ -61,7 +61,7 @@ function MiniChart({ label, unit, color, dataKey, minVal, maxVal }: MiniChartPro
       handleScale: false,
     });
 
-    const series = chart.addLineSeries({
+    const series = chart.addSeries(LineSeries, {
       color: color,
       lineWidth: 2,
       crosshairMarkerVisible: true,
@@ -102,7 +102,7 @@ function MiniChart({ label, unit, color, dataKey, minVal, maxVal }: MiniChartPro
     const data: LineData[] = readings
       .filter((r) => r[dataKey] !== null)
       .map((r) => ({
-        time: r.ts as number,
+        time: r.ts as UTCTimestamp,
         value: r[dataKey] as number,
       }));
 

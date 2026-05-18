@@ -87,7 +87,6 @@ export default function UserDatabase() {
         email: user.email,
         role: user.role as "security" | "admin" | "dean" | "facility",
         status: user.status as UserStatusType,
-        password: user.password,
       }));
       
       setUsers(transformedUsers);
@@ -236,7 +235,6 @@ export default function UserDatabase() {
           email: editingUser.email,
           role: editingUser.role as UserRole,
           status: editingUser.status as UserStatus,
-          password: editingUser.password,
         });
         
         // Update local state

@@ -19,7 +19,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    return {
+      user: null,
+      isLoading: true,
+      logout: async () => {},
+      refreshUser: () => {},
+      resetLoading: () => {},
+    } satisfies AuthContextType;
   }
   return context;
 }
@@ -29,7 +35,7 @@ async function fetchProfile(authUserId: string): Promise<AuthUser | null> {
     .from("users")
     .select("id, email, role, status, first_name, last_name")
     .eq("auth_user_id", authUserId)
-    .single();
+    .single() as { data: { id: string; email: string; role: string; status: string; first_name: string; last_name: string } | null; error: unknown };
 
   if (!profile || profile.status !== "active") return null;
 

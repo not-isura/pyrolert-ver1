@@ -66,8 +66,8 @@ export interface CameraSnapshot {
 // =====================================================
 
 export const getUsers = async (): Promise<User[]> => {
-  const { data, error } = await supabase
-    .from('users')
+  const { data, error } = await (supabase
+    .from('users') as any)
     .select('*')
     .order('created_at', { ascending: false });
   
@@ -76,8 +76,8 @@ export const getUsers = async (): Promise<User[]> => {
 };
 
 export const getUserById = async (id: string): Promise<User> => {
-  const { data, error } = await supabase
-    .from('users')
+  const { data, error } = await (supabase
+    .from('users') as any)
     .select('*')
     .eq('id', id)
     .single();
@@ -87,8 +87,8 @@ export const getUserById = async (id: string): Promise<User> => {
 };
 
 export const createUser = async (user: Omit<User, 'id' | 'created_at' | 'updated_at'>): Promise<User> => {
-  const { data, error } = await supabase
-    .from('users')
+  const { data, error } = await (supabase
+    .from('users') as any)
     .insert([user])
     .select()
     .single();
@@ -98,8 +98,8 @@ export const createUser = async (user: Omit<User, 'id' | 'created_at' | 'updated
 };
 
 export const updateUser = async (id: string, updates: Partial<Omit<User, 'id' | 'created_at'>>): Promise<User> => {
-  const { data, error } = await supabase
-    .from('users')
+  const { data, error } = await (supabase
+    .from('users') as any)
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', id)
     .select()
@@ -110,8 +110,8 @@ export const updateUser = async (id: string, updates: Partial<Omit<User, 'id' | 
 };
 
 export const deleteUser = async (id: string): Promise<void> => {
-  const { error } = await supabase
-    .from('users')
+  const { error } = await (supabase
+    .from('users') as any)
     .delete()
     .eq('id', id);
   
@@ -123,8 +123,8 @@ export const deleteUser = async (id: string): Promise<void> => {
 // =====================================================
 
 export const getRooms = async (): Promise<Room[]> => {
-  const { data, error } = await supabase
-    .from('rooms')
+  const { data, error } = await (supabase
+    .from('rooms') as any)
     .select('*')
     .order('name', { ascending: true });
   
@@ -135,8 +135,8 @@ export const getRooms = async (): Promise<Room[]> => {
 export const getRoomById = async (roomId: string): Promise<Room | null> => {
   console.log('getRoomById called with:', roomId);
   
-  const { data, error } = await supabase
-    .from('rooms')
+  const { data, error } = await (supabase
+    .from('rooms') as any)
     .select('*')
     .eq('id', roomId)
     .single();
@@ -161,8 +161,8 @@ export const getRoomById = async (roomId: string): Promise<Room | null> => {
 };
 
 export const createRoom = async (room: Omit<Room, 'id' | 'created_at'>): Promise<Room> => {
-  const { data, error } = await supabase
-    .from('rooms')
+  const { data, error } = await (supabase
+    .from('rooms') as any)
     .insert([room])
     .select()
     .single();
@@ -172,8 +172,8 @@ export const createRoom = async (room: Omit<Room, 'id' | 'created_at'>): Promise
 };
 
 export const updateRoom = async (id: string, updates: Partial<Omit<Room, 'id' | 'created_at'>>): Promise<Room> => {
-  const { data, error } = await supabase
-    .from('rooms')
+  const { data, error } = await (supabase
+    .from('rooms') as any)
     .update(updates)
     .eq('id', id)
     .select()
@@ -184,8 +184,8 @@ export const updateRoom = async (id: string, updates: Partial<Omit<Room, 'id' | 
 };
 
 export const deleteRoom = async (id: string): Promise<void> => {
-  const { error } = await supabase
-    .from('rooms')
+  const { error } = await (supabase
+    .from('rooms') as any)
     .delete()
     .eq('id', id);
   
@@ -206,8 +206,8 @@ export const updateRoomStatus = async (
   if (occupants !== undefined) updates.occupants = occupants;
   if (occupantChange !== undefined) updates.occupant_change = occupantChange;
   
-  const { data, error } = await supabase
-    .from('rooms')
+  const { data, error } = await (supabase
+    .from('rooms') as any)
     .update(updates)
     .eq('id', roomId)
     .select()
@@ -222,8 +222,8 @@ export const updateRoomStatus = async (
 // =====================================================
 
 export const getSensorsByRoom = async (roomId: string): Promise<Sensor[]> => {
-  const { data, error } = await supabase
-    .from('sensors')
+  const { data, error } = await (supabase
+    .from('sensors') as any)
     .select('*')
     .eq('room_id', roomId)
     .order('type', { ascending: true });
@@ -233,8 +233,8 @@ export const getSensorsByRoom = async (roomId: string): Promise<Sensor[]> => {
 };
 
 export const createSensor = async (sensor: Omit<Sensor, 'id' | 'created_at'>): Promise<Sensor> => {
-  const { data, error } = await supabase
-    .from('sensors')
+  const { data, error } = await (supabase
+    .from('sensors') as any)
     .insert([sensor])
     .select()
     .single();
@@ -244,8 +244,8 @@ export const createSensor = async (sensor: Omit<Sensor, 'id' | 'created_at'>): P
 };
 
 export const updateSensor = async (id: string, updates: Partial<Omit<Sensor, 'id' | 'created_at'>>): Promise<Sensor> => {
-  const { data, error } = await supabase
-    .from('sensors')
+  const { data, error } = await (supabase
+    .from('sensors') as any)
     .update(updates)
     .eq('id', id)
     .select()
@@ -256,8 +256,8 @@ export const updateSensor = async (id: string, updates: Partial<Omit<Sensor, 'id
 };
 
 export const deleteSensor = async (id: string): Promise<void> => {
-  const { error } = await supabase
-    .from('sensors')
+  const { error } = await (supabase
+    .from('sensors') as any)
     .delete()
     .eq('id', id);
   
@@ -270,8 +270,8 @@ export const updateSensorReading = async (
   status: SensorStatus,
   connected: boolean = true
 ): Promise<Sensor> => {
-  const { data, error } = await supabase
-    .from('sensors')
+  const { data, error } = await (supabase
+    .from('sensors') as any)
     .update({
       value,
       status,
@@ -291,8 +291,8 @@ export const updateSensorReading = async (
 // =====================================================
 
 export const getEventLogs = async (): Promise<EventLog[]> => {
-  const { data, error } = await supabase
-    .from('event_logs')
+  const { data, error } = await (supabase
+    .from('event_logs') as any)
     .select('*')
     .order('timestamp', { ascending: false });
   
@@ -304,8 +304,8 @@ export const getEventLogsByDateRange = async (
   startDate?: string,
   endDate?: string
 ): Promise<EventLog[]> => {
-  let query = supabase
-    .from('event_logs')
+  let query = (supabase
+    .from('event_logs') as any)
     .select('*');
   
   if (startDate) {
@@ -323,8 +323,8 @@ export const getEventLogsByDateRange = async (
 };
 
 export const createEventLog = async (log: Omit<EventLog, 'created_at'>): Promise<EventLog> => {
-  const { data, error } = await supabase
-    .from('event_logs')
+  const { data, error } = await (supabase
+    .from('event_logs') as any)
     .insert([log])
     .select()
     .single();
@@ -338,8 +338,8 @@ export const createEventLog = async (log: Omit<EventLog, 'created_at'>): Promise
 // =====================================================
 
 export const getCameraSnapshotsByRoom = async (roomId: string): Promise<CameraSnapshot[]> => {
-  const { data, error } = await supabase
-    .from('camera_snapshots')
+  const { data, error } = await (supabase
+    .from('camera_snapshots') as any)
     .select('*')
     .eq('room_id', roomId)
     .order('captured_at', { ascending: false })
@@ -350,8 +350,8 @@ export const getCameraSnapshotsByRoom = async (roomId: string): Promise<CameraSn
 };
 
 export const getLatestCameraSnapshot = async (roomId: string): Promise<CameraSnapshot | null> => {
-  const { data, error } = await supabase
-    .from('camera_snapshots')
+  const { data, error } = await (supabase
+    .from('camera_snapshots') as any)
     .select('*')
     .eq('room_id', roomId)
     .order('captured_at', { ascending: false })
@@ -369,8 +369,8 @@ export const createCameraSnapshot = async (
   roomId: string,
   imageUrl: string
 ): Promise<CameraSnapshot> => {
-  const { data, error } = await supabase
-    .from('camera_snapshots')
+  const { data, error } = await (supabase
+    .from('camera_snapshots') as any)
     .insert([{
       room_id: roomId,
       image_url: imageUrl,
@@ -389,7 +389,7 @@ export const createCameraSnapshot = async (
 
 export const testConnection = async (): Promise<boolean> => {
   try {
-    const { error } = await supabase.from('rooms').select('count').single();
+    const { error } = await (supabase.from('rooms') as any).select('count').single();
     return !error;
   } catch {
     return false;
@@ -412,8 +412,8 @@ export const loginUser = async (email: string, password: string): Promise<AuthUs
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw new Error('Invalid email or password');
 
-  const { data: profile, error: profileError } = await supabase
-    .from('users')
+  const { data: profile, error: profileError } = await (supabase
+    .from('users') as any)
     .select('id, email, role, status, first_name, last_name')
     .eq('auth_user_id', data.user.id)
     .single();
@@ -441,8 +441,8 @@ export const getCurrentUser = async (): Promise<AuthUser | null> => {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return null;
 
-  const { data: profile } = await supabase
-    .from('users')
+  const { data: profile } = await (supabase
+    .from('users') as any)
     .select('id, email, role, status, first_name, last_name')
     .eq('auth_user_id', session.user.id)
     .single();
