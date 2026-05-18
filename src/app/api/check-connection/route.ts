@@ -78,85 +78,99 @@ async function sendDisconnectEmails(recipients: string[], disconnectedAt: string
 }
 
 export async function GET(req: NextRequest) {
-  // Verify cron secret if configured (set in Vercel env vars, not .env locally)
-  if (process.env.CRON_SECRET) {
-    const auth = req.headers.get('authorization');
-    if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-  }
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
-
-  // Get latest sensor reading
-  const { data: latestReading } = await supabase
-    .from('sensor_readings')
-    .select('ts')
-    .order('ts', { ascending: false })
-    .limit(1)
-    .single();
-
-  const nowSeconds = Date.now() / 1000;
-  const isConnected = latestReading
-    ? (nowSeconds - latestReading.ts) < STALE_THRESHOLD_SECONDS
-    : false;
-
-  // Get persisted connection state
-  const { data: state } = await supabase
-    .from('device_connection_state')
-    .select('*')
-    .eq('id', 1)
-    .single();
-
-  const wasConnected = state?.is_connected ?? true;
-
-  // Transition: connected → disconnected
-  if (wasConnected && !isConnected) {
-    const disconnectedAt = new Date().toLocaleString('en-US', {
-      month: 'long', day: 'numeric', year: 'numeric',
-      hour: 'numeric', minute: '2-digit', second: '2-digit',
-      hour12: true,
-    });
-
-    // Fetch all active user emails
-    const { data: usersData } = await supabase
-      .from('users')
-      .select('email')
-      .eq('status', 'active');
-
-    const recipients = (usersData ?? [])
-      .map((u: { email: string }) => u.email)
-      .filter((email: string) => email && !email.endsWith('@test.pyrolert.com'));
-
-    if (recipients.length > 0) {
-      await sendDisconnectEmails(recipients, disconnectedAt);
+  try {
+    // Verify cron secret if configured (set in Vercel env vars, not .env locally)
+    if (process.env.CRON_SECRET) {
+      const auth = req.headers.get('authorization');
+      if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
     }
 
-    await supabase
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+
+    // Get latest sensor reading
+    const { data: latestReading } = await supabase
+      .from('sensor_readings')
+      .select('ts')
+      .order('ts', { ascending: false })
+      .limit(1)
+      .single();
+
+    const nowSeconds = Date.now() / 1000;
+    const isConnected = latestReading
+      ? (nowSeconds - latestReading.ts) < STALE_THRESHOLD_SECONDS
+      : false;
+
+    // Get persisted connection state
+    const { data: state } = await supabase
       .from('device_connection_state')
-      .update({
-        is_connected: false,
-        last_disconnected_at: new Date().toISOString(),
-        last_alert_sent_at: new Date().toISOString(),
-      })
-      .eq('id', 1);
+      .select('*')
+      .eq('id', 1)
+      .single();
 
-    return NextResponse.json({ status: 'disconnected', emailsSent: recipients.length });
+    const wasConnected = state?.is_connected ?? true;
+
+    // Transition: connected → disconnected
+    if (wasConnected && !isConnected) {
+      const disconnectedAt = new Date().toLocaleString('en-US', {
+        month: 'long', day: 'numeric', year: 'numeric',
+        hour: 'numeric', minute: '2-digit', second: '2-digit',
+        hour12: true,
+      });
+
+      // Fetch all active user emails
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('email')
+        .eq('status', 'active');
+
+      const recipients = (usersData ?? [])
+        .map((u: { email: string }) => u.email)
+        .filter((email: string) => email && !email.endsWith('@test.pyrolert.com'));
+
+      let emailError: string | null = null;
+      if (recipients.length > 0) {
+        try {
+          await sendDisconnectEmails(recipients, disconnectedAt);
+        } catch (err) {
+          emailError = err instanceof Error ? err.message : String(err);
+        }
+      }
+
+      await supabase
+        .from('device_connection_state')
+        .update({
+          is_connected: false,
+          last_disconnected_at: new Date().toISOString(),
+          last_alert_sent_at: new Date().toISOString(),
+        })
+        .eq('id', 1);
+
+      return NextResponse.json({
+        status: 'disconnected',
+        emailsSent: emailError ? 0 : recipients.length,
+        ...(emailError && { emailError }),
+      });
+    }
+
+    // Transition: disconnected → connected (reset state)
+    if (!wasConnected && isConnected) {
+      await supabase
+        .from('device_connection_state')
+        .update({ is_connected: true })
+        .eq('id', 1);
+
+      return NextResponse.json({ status: 'reconnected' });
+    }
+
+    return NextResponse.json({ status: isConnected ? 'connected' : 'still_disconnected' });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  // Transition: disconnected → connected (reset state)
-  if (!wasConnected && isConnected) {
-    await supabase
-      .from('device_connection_state')
-      .update({ is_connected: true })
-      .eq('id', 1);
-
-    return NextResponse.json({ status: 'reconnected' });
-  }
-
-  return NextResponse.json({ status: isConnected ? 'connected' : 'still_disconnected' });
 }
