@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, BarChart3, FileText, ClipboardList } from "lucide-react";
+import { Home, ClipboardList, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -13,22 +13,16 @@ const navItems = [
     path: "/dashboard-1",
     roles: ['admin', 'security', 'dean', 'facility', 'director'] 
   },
-  { 
-    title: "Room Recent Data", 
-    icon: BarChart3, 
-    path: "/room-data",
-    roles: ['admin', 'security', 'dean', 'facility', 'director'] 
-  },
-  {
-    title: "All Event Logs",
-    icon: FileText,
-    path: "/event-logs",
-    roles: ['admin', 'security', 'dean', 'facility', 'director']
-  },
   {
     title: "Alert Episode Logs",
     icon: ClipboardList,
     path: "/alert-logs",
+    roles: ['admin', 'security', 'dean', 'facility', 'director'],
+  },
+  {
+    title: "Settings",
+    icon: Settings,
+    path: "/settings",
     roles: ['admin', 'security', 'dean', 'facility', 'director'],
   },
 ];
@@ -46,7 +40,7 @@ export const Sidebar = () => {
     <aside className="hidden lg:block lg:w-16 xl:w-64 bg-card border-r border-border h-[calc(100vh-4rem)] sticky top-16 overflow-y-auto">
       <nav className="p-2 lg:p-4 space-y-2">
         {visibleNavItems.map((item) => {
-          const isActive = pathname === item.path;
+          const isActive = pathname === item.path || (item.path !== "/" && pathname.startsWith(item.path + "/"));
           return (
             <Link
               key={item.path}
