@@ -77,12 +77,12 @@ const getHighAlertOnlyStatus = (value: number, highAlert: number, strictGreater 
 };
 
 const STATIC_SENSORS: SensorDisplayData[] = [
-    { name: "CO", value: "", status: "normal", dataKey: "gas_co", color: "#ef4444", unit: "ppm", minVal: 0, maxVal: 100 },
-    { name: "NO2", value: "", status: "normal", dataKey: "gas_no2", color: "#f97316", unit: "ppm", minVal: 0, maxVal: 5 },
-    { name: "PM2.5", value: "", status: "normal", dataKey: "pm25", color: "#8b5cf6", unit: "ug/m3", minVal: 0, maxVal: 50 },
-    { name: "O2", value: "", status: "normal", dataKey: "gas_o2", color: "#22c55e", unit: "%", minVal: 10, maxVal: 25 },
+    { name: "Carbon Monoxide (CO)", value: "", status: "normal", dataKey: "gas_co", color: "#ef4444", unit: "ppm", minVal: 0, maxVal: 100 },
+    { name: "Nitrogen Dioxide (NO2)", value: "", status: "normal", dataKey: "gas_no2", color: "#f97316", unit: "ppm", minVal: 0, maxVal: 5 },
+    { name: "Particulate Matter (PM2.5)", value: "", status: "normal", dataKey: "pm25", color: "#8b5cf6", unit: "ug/m3", minVal: 0, maxVal: 50 },
+    { name: "Oxygen (O2)", value: "", status: "normal", dataKey: "gas_o2", color: "#22c55e", unit: "%", minVal: 10, maxVal: 25 },
     { name: "Temperature", value: "", status: "normal", dataKey: "temp_c", color: "#3b82f6", unit: "C", minVal: 20, maxVal: 70 },
-    { name: "Temp RoC", value: "", status: "normal", dataKey: "temp_roc", color: "#06b6d4", unit: "C/min", minVal: -2, maxVal: 10 },
+    { name: "Temperature Rate of Change", value: "", status: "normal", dataKey: "temp_roc", color: "#06b6d4", unit: "C/min", minVal: -2, maxVal: 10 },
 ];
 
 const getSensorThreshold = (sensorName: string, status: StatusLevel): number | undefined => {
@@ -682,7 +682,7 @@ export default function MonitoringDashboard() {
                         {/* Current Status */}
                         <Card>
                             <CardHeader className="pb-1 pt-3 px-4">
-                                <CardTitle className="text-sm font-bold text-brand-blue">Current Status</CardTitle>
+                                <CardTitle className="text-base font-bold text-brand-blue">Current Status</CardTitle>
                             </CardHeader>
                             <CardContent className="px-4 pb-3 flex flex-col items-center gap-0">
                                 <svg viewBox="0 0 260 135" className="w-48" aria-label="Detection status gauge">
@@ -710,7 +710,7 @@ export default function MonitoringDashboard() {
                         {/* Alert Information */}
                         <Card>
                             <CardHeader className="pb-1 pt-3 px-4">
-                                <CardTitle className="text-sm font-bold text-brand-blue">Alert Information</CardTitle>
+                                <CardTitle className="text-base font-bold text-brand-blue">Alert Information</CardTitle>
                             </CardHeader>
 
                             {!activeEpisode ? (
@@ -1002,7 +1002,7 @@ export default function MonitoringDashboard() {
                                                                 return (
                                                                     <div key={sensor.name} className="rounded-md border border-gray-200 p-3">
                                                                         <div className="flex items-center justify-between mb-1">
-                                                                            <p className="text-xs font-semibold text-brand-blue">
+                                                                            <p className="text-sm font-semibold text-brand-blue">
                                                                                 {sensor.name}
                                                                                 <span className="text-gray-400 font-normal ml-1">({sensor.unit})</span>
                                                                             </p>
@@ -1207,7 +1207,7 @@ export default function MonitoringDashboard() {
                         <Card className={activeEpisode ? "flex-1 flex flex-col" : ""}>
                             <CardHeader className="pb-1 pt-3 px-4">
                                 <div className="flex items-center justify-between">
-                                    <CardTitle className="text-sm font-bold text-brand-blue">Camera Snapshots</CardTitle>
+                                    <CardTitle className="text-base font-bold text-brand-blue">Camera Snapshots</CardTitle>
                                     {activeEpisode && (
                                         <Button
                                             variant="outline"
@@ -1299,19 +1299,19 @@ export default function MonitoringDashboard() {
                                                         </div>
                                                     )}
                                                     {cardLogs[currentImageIndex] && (
-                                                    <div className="absolute bottom-0 left-0 right-0 bg-black/55 px-2 py-1 rounded-b-lg flex items-center justify-between">
-                                                        <p className="text-xs text-white/90">
-                                                            {new Date(cardLogs[currentImageIndex].ts * 1000).toLocaleTimeString()}
-                                                        </p>
-                                                        <div className="flex items-center gap-1.5">
-                                                            <span className="text-xs text-white/90 font-semibold">
-                                                                {cardLogs[currentImageIndex].total_count} person{cardLogs[currentImageIndex].total_count !== 1 ? "s" : ""}
-                                                            </span>
-                                                            <span className="text-xs text-white/60">
-                                                                {cardLogs[currentImageIndex].trigger_source === "manual" ? "· Manual" : "· Auto"}
-                                                            </span>
+                                                        <div className="absolute bottom-0 left-0 right-0 bg-black/55 px-2 py-1 rounded-b-lg flex items-center justify-between">
+                                                            <p className="text-xs text-white/90">
+                                                                {new Date(cardLogs[currentImageIndex].ts * 1000).toLocaleTimeString()}
+                                                            </p>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="text-xs text-white/90 font-semibold">
+                                                                    {cardLogs[currentImageIndex].total_count} person{cardLogs[currentImageIndex].total_count !== 1 ? "s" : ""}
+                                                                </span>
+                                                                <span className="text-xs text-white/60">
+                                                                    {cardLogs[currentImageIndex].trigger_source === "manual" ? "· Manual" : "· Auto"}
+                                                                </span>
+                                                            </div>
                                                         </div>
-                                                    </div>
                                                     )}
                                                 </div>
                                                 {cardLogs.length > 1 && (
@@ -1364,7 +1364,7 @@ export default function MonitoringDashboard() {
                     {/* ── Sensor Readings (2-col grid) ──────────────────────────── */}
                     <Card className="flex flex-col">
                         <CardHeader className="pb-1 pt-3 px-4">
-                            <CardTitle className="text-sm font-bold text-brand-blue">Sensor Readings</CardTitle>
+                            <CardTitle className="text-base font-bold text-brand-blue">Sensor Readings</CardTitle>
                         </CardHeader>
                         <CardContent className="px-4 pb-4 flex-1 flex items-center">
                             <div className="grid grid-cols-2 gap-3 w-full">
@@ -1372,7 +1372,7 @@ export default function MonitoringDashboard() {
                                     <Card key={sensor.name}>
                                         <CardContent className="p-3 space-y-2">
                                             <div className="flex items-center justify-between gap-2">
-                                                <h3 className="text-sm font-semibold text-brand-blue">{sensor.name}</h3>
+                                                <h3 className="text-base font-semibold text-brand-blue">{sensor.name}</h3>
                                                 <p className="text-sm font-semibold text-brand-blue">
                                                     {formatSensorValue(sensor, latestReading)}
                                                     <span className="text-gray-400 font-medium ml-1 text-xs">{sensor.unit}</span>
